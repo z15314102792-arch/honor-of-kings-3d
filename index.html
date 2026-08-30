@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#050b14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="王者荣耀">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <title>王者荣耀 3D Web MOBA - 高还原度自研引擎版</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Three.js Engine -->
+  <script src="js/three.min.js"></script>
+  <script>
+    if (typeof THREE === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
+    }
+  </script>
+</head>
+<body>
+  <div id="game-container">
+    <!-- 3D Canvas -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- 2D HUD UI Overlay -->
+    <div id="hud-overlay">
+      <!-- Top Match Bar -->
+      <div id="top-bar">
+        <div class="team-score blue">
+          <span>蓝方</span>
+          <span id="blue-score">0</span>
+        </div>
+        <div id="match-timer">00:00</div>
+        <div class="team-score red">
+          <span id="red-score">0</span>
+          <span>红方</span>
+        </div>
+        <div class="player-kda" id="player-kda-display">
+          <span>⚔️ <b>0/0/0</b></span>
+          <span>💰 <b>300</b></span>
+          <span>🗡️ <b>0</b></span>
+        </div>
+      </div>
+
+      <!-- Mini-map -->
+      <div id="minimap-container" class="hud-interactive">
+        <canvas id="minimap-canvas"></canvas>
+      </div>
+
+      <!-- Quick Buy Items -->
+      <div id="quick-buy-container" class="hud-interactive"></div>
+
+      <!-- Kill Broadcasts -->
+      <div id="kill-broadcast-container"></div>
+
+      <!-- Channeling Progress Bar -->
+      <div id="channeling-bar-container">
+        <div id="channeling-text">正在回城中... (移动或受击将打断)</div>
+        <div id="channeling-bar"></div>
+      </div>
+
+      <!-- Virtual Joystick -->
+      <div id="joystick-zone" class="hud-interactive">
+        <div id="joystick-thumb"></div>
+        <div class="joystick-hint">WASD / 摇杆移动</div>
+      </div>
+
+      <!-- Sub Spells (Recall, Heal, Flash) -->
+      <div id="sub-spells-container">
+        <div class="sub-spell-btn hud-interactive" id="btn-spell-recall" title="回城 (快捷键: B)">
+          <div class="icon">🌀</div>
+          <div class="label">回城 (B)</div>
+        </div>
+        <div class="sub-spell-btn hud-interactive" id="btn-spell-heal" title="恢复 (快捷键: D)">
+          <div class="icon">💚</div>
+          <div class="label">恢复 (D)</div>
+          <div class="cd-overlay" id="heal-cd-mask"></div>
+        </div>
+        <div class="sub-spell-btn hud-interactive" id="btn-spell-flash" title="闪现 (快捷键: F)">
+          <div class="icon">⚡</div>
+          <div class="label">闪现 (F)</div>
+          <div class="cd-overlay" id="flash-cd-mask"></div>
+        </div>
+      </div>
+
+      <!-- Combat Skills Panel -->
+      <div id="combat-panel">
+        <!-- Main Attack -->
+        <div id="btn-main-attack" class="hud-interactive" title="普通攻击 (快捷键: 空格/J)">
+          <span>普攻</span>
+          <span class="sub-text">Space/J</span>
+        </div>
+
+        <!-- Push Tower Mini Button -->
+        <div id="btn-push-tower" class="hud-interactive" title="推塔 (快捷键: K)">
+          <span>推塔</span>
+          <span style="font-size: 8px;">K</span>
+        </div>
+
+        <!-- Last Hit Minion Mini Button -->
+        <div id="btn-last-hit" class="hud-interactive" title="补刀 (快捷键: L)">
+          <span>补刀</span>
+          <span style="font-size: 8px;">L</span>
+        </div>
+
+        <!-- Skill 1 -->
+        <div class="skill-btn-wrapper" id="skill-1-wrapper">
+          <div class="btn-skill-upgrade hud-interactive" id="btn-up-1">+</div>
+          <div class="skill-btn hud-interactive" id="btn-skill-1" title="技能1 (快捷键: Q/1)">
+            <span class="skill-icon">⚡</span>
+            <span class="skill-name">1技能 (Q)</span>
+            <div class="skill-cd-mask" id="skill-1-cd"></div>
+          </div>
+        </div>
+
+        <!-- Skill 2 -->
+        <div class="skill-btn-wrapper" id="skill-2-wrapper">
+          <div class="btn-skill-upgrade hud-interactive" id="btn-up-2">+</div>
+          <div class="skill-btn hud-interactive" id="btn-skill-2" title="技能2 (快捷键: E/2)">
+            <span class="skill-icon">🌀</span>
+            <span class="skill-name">2技能 (E)</span>
+            <div class="skill-cd-mask" id="skill-2-cd"></div>
+          </div>
+        </div>
+
+        <!-- Skill 3 (Ult) -->
+        <div class="skill-btn-wrapper" id="skill-3-wrapper">
+          <div class="btn-skill-upgrade hud-interactive" id="btn-up-3">+</div>
+          <div class="skill-btn ult hud-interactive" id="btn-skill-3" title="终极技能 (快捷键: R/3)">
+            <span class="skill-icon">🔥</span>
+            <span class="skill-name">大招 (R)</span>
+            <div class="skill-cd-mask" id="skill-3-cd"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal" class="hud-interactive">
+      <div class="shop-header">
+        <div class="title">🛒 局内装备商店</div>
+        <div class="gold-display" id="shop-gold-display">💰 当前金币: 300</div>
+        <button class="btn-close-modal" onclick="document.getElementById('shop-modal').style.display='none'">✕</button>
+      </div>
+      <div class="shop-body">
+        <div class="shop-tabs">
+          <div class="shop-tab active" onclick="window.gameInstance.shop.renderShopItems('phys')">物理攻击</div>
+          <div class="shop-tab" onclick="window.gameInstance.shop.renderShopItems('magic')">法术攻击</div>
+          <div class="shop-tab" onclick="window.gameInstance.shop.renderShopItems('def')">防御装备</div>
+          <div class="shop-tab" onclick="window.gameInstance.shop.renderShopItems('boot')">移动鞋子</div>
+        </div>
+        <div class="shop-items-grid" id="shop-items-grid"></div>
+        <div class="shop-item-detail" id="shop-item-detail"></div>
+      </div>
+    </div>
+
+    <!-- Hero Select Modal -->
+    <div id="hero-select-modal">
+      <div class="hero-select-title">王者荣耀 · 英雄集结</div>
+      <div class="hero-cards-container">
+        <!-- Arthur -->
+        <div class="hero-select-card active" onclick="selectHero('arthur', this)">
+          <div class="hero-avatar-big">🛡️</div>
+          <div class="hero-card-name">亚瑟</div>
+          <div class="hero-card-type">战士 / 坦克</div>
+          <div class="hero-card-skills">
+            【1】誓约之盾(沉默加速)<br>
+            【2】回旋打击(旋转圣盾)<br>
+            【3】圣剑裁决(跃起斩杀)
+          </div>
+        </div>
+
+        <!-- Hou Yi -->
+        <div class="hero-select-card" onclick="selectHero('houyi', this)">
+          <div class="hero-avatar-big">🏹</div>
+          <div class="hero-card-name">后羿</div>
+          <div class="hero-card-type">射手 / ADC</div>
+          <div class="hero-card-skills">
+            【1】多重箭矢(分裂输出)<br>
+            【2】落日余晖(落日减速)<br>
+            【3】惩戒射箭(全图火鸟)
+          </div>
+        </div>
+
+        <!-- Daji -->
+        <div class="hero-select-card" onclick="selectHero('daji', this)">
+          <div class="hero-avatar-big">🦊</div>
+          <div class="hero-card-name">妲己</div>
+          <div class="hero-card-type">法师 / 爆发</div>
+          <div class="hero-card-skills">
+            【1】灵魂冲击(法术波浪)<br>
+            【2】偶像魅力(锁定魅惑)<br>
+            【3】女王崇拜(狐火连射)
+          </div>
+        </div>
+      </div>
+      <button class="btn-start-battle" onclick="startGame()">进入王者峡谷</button>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal"></div>
+  </div>
+
+  <!-- Game Engine Bundle -->
+  <script src="js/bundle.js"></script>
+
+  <script>
+    // Register PWA Service Worker for App capability & offline cache
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration skipped:', err));
+      });
+    }
+
+    let selectedHero = 'arthur';
+
+    function selectHero(heroKey, cardElem) {
+      selectedHero = heroKey;
+      document.querySelectorAll('.hero-select-card').forEach(c => c.classList.remove('active'));
+      cardElem.classList.add('active');
+    }
+
+    function startGame() {
+      // Audio unlock on user interaction
+      if (typeof Sound !== 'undefined') Sound.init();
+      document.getElementById('hero-select-modal').style.display = 'none';
+      const game = new MobaGame();
+      game.startMatch(selectedHero);
+    }
+  </script>
+</body>
+</html>

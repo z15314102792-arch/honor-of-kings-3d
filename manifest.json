@@ -1,0 +1,25 @@
+{
+  "name": "王者荣耀 3D Web MOBA",
+  "short_name": "王者荣耀",
+  "description": "高还原度 3D 峡谷即开即玩 MOBA 游戏",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#050b14",
+  "theme_color": "#050b14",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
