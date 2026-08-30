@@ -1,4 +1,6 @@
-\n// --- js/engine/Renderer.js ---\n/**
+
+// --- js/engine/Renderer.js ---
+/**
  * Three.js 3D Engine Setup & Camera Follow Controller
  */
 class GameRenderer {
@@ -24,8 +26,10 @@ class GameRenderer {
       antialias: true,
       powerPreference: 'high-performance'
     });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const w = window.innerWidth || 1920;
+    const h = window.innerHeight || 1080;
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -37,19 +41,19 @@ class GameRenderer {
 
   setupLighting() {
     // Ambient & Hemisphere light
-    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.65);
+    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.7);
     hemiLight.position.set(0, 50, 0);
     this.scene.add(hemiLight);
 
-    const ambientLight = new THREE.AmbientLight(0x2d3748, 0.4);
+    const ambientLight = new THREE.AmbientLight(0x2d3748, 0.45);
     this.scene.add(ambientLight);
 
-    // Sunlight (Directional with shadow casting)
+    // Sunlight
     this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.25);
     this.sunLight.position.set(35, 60, 45);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
     this.sunLight.shadow.camera.near = 10;
     this.sunLight.shadow.camera.far = 160;
     this.sunLight.shadow.camera.left = -50;
@@ -70,10 +74,20 @@ class GameRenderer {
   }
 
   setupEventListeners() {
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+    const handleResize = () => {
+      const w = window.innerWidth || document.documentElement.clientWidth;
+      const h = window.innerHeight || document.documentElement.clientHeight;
+      if (!w || !h) return;
+      this.camera.aspect = w / h;
+      this.camera.fov = (w / h < 1.6) ? 52 : 45;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setSize(w, h);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(handleResize, 150);
+      setTimeout(handleResize, 350);
     });
   }
 
@@ -106,7 +120,10 @@ class GameRenderer {
     this.renderer.render(this.scene, this.camera);
   }
 }
-\n\n// --- js/engine/Audio.js ---\n/**
+
+
+// --- js/engine/Audio.js ---
+/**
  * Web Audio API Sound Synthesizer for MOBA sound effects & announcer
  */
 class SoundEngine {
@@ -319,7 +336,10 @@ class SoundEngine {
 }
 
 const Sound = new SoundEngine();
-\n\n// --- js/engine/VFX.js ---\n/**
+
+
+// --- js/engine/VFX.js ---
+/**
  * Particle and Visual Effects System
  */
 class VFXManager {
@@ -683,7 +703,10 @@ class VFXManager {
     }
   }
 }
-\n\n// --- js/moba/Map.js ---\n/**
+
+
+// --- js/moba/Map.js ---
+/**
  * 3D MOBA Canyon Map with Lanes, River, Bushes, and Obstacles
  */
 class MobaMap {
@@ -926,7 +949,10 @@ class MobaMap {
     return false;
   }
 }
-\n\n// --- js/moba/Monster.js ---\n/**
+
+
+// --- js/moba/Monster.js ---
+/**
  * Jungle Monster Camps: Red Buff, Blue Buff, Small Monsters
  */
 class JungleMonster {
@@ -1148,7 +1174,10 @@ class JungleMonster {
     this.scene.add(this.group);
   }
 }
-\n\n// --- js/moba/Minion.js ---\n/**
+
+
+// --- js/moba/Minion.js ---
+/**
  * Lane Minion Waves (Melee Vanguard, Caster Mage, Siege Cannon)
  */
 class Minion {
@@ -1378,7 +1407,10 @@ class Minion {
     return closest;
   }
 }
-\n\n// --- js/moba/Tower.js ---\n/**
+
+
+// --- js/moba/Tower.js ---
+/**
  * Defensive Towers and Base Crystals with Laser Aggro & Escalating Damage
  */
 class DefensiveTower {
@@ -1627,7 +1659,10 @@ class DefensiveTower {
     );
   }
 }
-\n\n// --- js/moba/Hero.js ---\n/**
+
+
+// --- js/moba/Hero.js ---
+/**
  * Base Hero Class with Attributes, Leveling, Status Effects, and 3D Model
  */
 class Hero {
@@ -2042,7 +2077,10 @@ class Hero {
     }
   }
 }
-\n\n// --- js/moba/HeroArthur.js ---\n/**
+
+
+// --- js/moba/HeroArthur.js ---
+/**
  * 亚瑟 (Arthur) - 圣骑士 Warrior/Tank
  * Passive: 圣光守护 (Regen)
  * S1: 誓约之盾 (Silence + Speed + Leap Strike)
@@ -2241,7 +2279,10 @@ class HeroArthur extends Hero {
     }
   }
 }
-\n\n// --- js/moba/HeroHouyi.js ---\n/**
+
+
+// --- js/moba/HeroHouyi.js ---
+/**
  * 后羿 (Hou Yi) - 射手 Marksman/ADC
  * Passive: 惩戒射击 (Attack Speed Ramp & Arrow Split)
  * S1: 多重箭矢 (Multi-target Empowered Arrows)
@@ -2390,7 +2431,10 @@ class HeroHouyi extends Hero {
     }
   }
 }
-\n\n// --- js/moba/HeroDaji.js ---\n/**
+
+
+// --- js/moba/HeroDaji.js ---
+/**
  * 妲己 (Daji) - 法师 Mage
  * Passive: 失心 (MR Shred)
  * S1: 灵魂冲击 (Soul Fox Shockwave)
@@ -2517,7 +2561,10 @@ class HeroDaji extends Hero {
     }
   }
 }
-\n\n// --- js/moba/AIController.js ---\n/**
+
+
+// --- js/moba/AIController.js ---
+/**
  * Smart Bot Behavior Tree AI for Allied and Enemy Bots
  */
 class AIController {
@@ -2696,7 +2743,10 @@ class AIController {
     this.hero.velocity.copy(dir);
   }
 }
-\n\n// --- js/moba/Shop.js ---\n/**
+
+
+// --- js/moba/Shop.js ---
+/**
  * Equipment Shop System & Quick Buy
  */
 const ITEM_DATABASE = [
@@ -2857,7 +2907,10 @@ class ShopManager {
     }
   }
 }
-\n\n// --- js/moba/UIController.js ---\n/**
+
+
+// --- js/moba/UIController.js ---
+/**
  * UI Controller: Mini-map Canvas, Virtual Joystick, Skill Wheels & PC Hotkeys
  */
 class UIController {
@@ -2893,25 +2946,21 @@ class UIController {
   }
 
   initControls() {
-    // 1. Virtual Joystick (Touch / Mouse)
+    // 1. Virtual Joystick with Multi-Touch tracking
     const joyZone = document.getElementById('joystick-zone');
     const joyThumb = document.getElementById('joystick-thumb');
 
-    if (joyZone && joyThumb) {
-      const handleStart = (clientX, clientY) => {
-        const rect = joyZone.getBoundingClientRect();
-        this.joystick.startX = rect.left + rect.width / 2;
-        this.joystick.startY = rect.top + rect.height / 2;
-        this.joystick.active = true;
-        handleMove(clientX, clientY);
-      };
+    let joyTouchId = null;
 
-      const handleMove = (clientX, clientY) => {
-        if (!this.joystick.active) return;
-        const dx = clientX - this.joystick.startX;
-        const dy = clientY - this.joystick.startY;
+    if (joyZone && joyThumb) {
+      const updateJoystick = (clientX, clientY) => {
+        const rect = joyZone.getBoundingClientRect();
+        const startX = rect.left + rect.width / 2;
+        const startY = rect.top + rect.height / 2;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxR = this.joystick.radius;
+        const maxR = rect.width * 0.38;
 
         const clampedDist = Math.min(dist, maxR);
         const angle = Math.atan2(dy, dx);
@@ -2928,8 +2977,9 @@ class UIController {
         }
       };
 
-      const handleEnd = () => {
+      const resetJoystick = () => {
         this.joystick.active = false;
+        joyTouchId = null;
         joyThumb.style.transform = `translate(0px, 0px)`;
         this.joystick.dir.set(0, 0, 0);
         if (this.player && !this.keys.w && !this.keys.a && !this.keys.s && !this.keys.d) {
@@ -2937,20 +2987,58 @@ class UIController {
         }
       };
 
-      joyZone.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
-      window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
-      window.addEventListener('mouseup', handleEnd);
+      // Mouse support
+      joyZone.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.joystick.active = true;
+        updateJoystick(e.clientX, e.clientY);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (this.joystick.active && joyTouchId === null) {
+          updateJoystick(e.clientX, e.clientY);
+        }
+      });
+      window.addEventListener('mouseup', () => {
+        if (this.joystick.active && joyTouchId === null) {
+          resetJoystick();
+        }
+      });
 
+      // Touch Multi-touch support (independent from right thumb taps)
       joyZone.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 0) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          joyTouchId = t.identifier;
+          this.joystick.active = true;
+          updateJoystick(t.clientX, t.clientY);
+        }
       }, { passive: false });
+
       window.addEventListener('touchmove', (e) => {
-        if (e.touches.length > 0) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        if (!this.joystick.active || joyTouchId === null) return;
+        for (let i = 0; i < e.touches.length; i++) {
+          if (e.touches[i].identifier === joyTouchId) {
+            updateJoystick(e.touches[i].clientX, e.touches[i].clientY);
+            break;
+          }
+        }
       }, { passive: false });
-      window.addEventListener('touchend', handleEnd);
+
+      window.addEventListener('touchend', (e) => {
+        if (!this.joystick.active || joyTouchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === joyTouchId) {
+            resetJoystick();
+            break;
+          }
+        }
+      });
+      window.addEventListener('touchcancel', resetJoystick);
     }
 
-    // 2. Keyboard Controls (WASD + Hotkeys)
+    // 2. Keyboard Controls (WASD + Hotkeys for PC)
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
       this.keys[k] = true;
@@ -2973,44 +3061,33 @@ class UIController {
       this.handleKeyboardMovement();
     });
 
-    // 3. UI Buttons Click Handlers
-    const btnAttack = document.getElementById('btn-main-attack');
-    if (btnAttack) btnAttack.onclick = () => this.triggerMainAttack();
+    // 3. Fast Touch & Click Bindings for All Buttons (Zero latency on mobile)
+    const bindBtn = (id, fn) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fn();
+      }, { passive: false });
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        fn();
+      });
+    };
 
-    const btnTower = document.getElementById('btn-push-tower');
-    if (btnTower) btnTower.onclick = () => this.triggerPushTower();
-
-    const btnMinion = document.getElementById('btn-last-hit');
-    if (btnMinion) btnMinion.onclick = () => this.triggerLastHit();
-
-    const btnS1 = document.getElementById('btn-skill-1');
-    if (btnS1) btnS1.onclick = () => this.triggerSkill(0);
-
-    const btnS2 = document.getElementById('btn-skill-2');
-    if (btnS2) btnS2.onclick = () => this.triggerSkill(1);
-
-    const btnS3 = document.getElementById('btn-skill-3');
-    if (btnS3) btnS3.onclick = () => this.triggerSkill(2);
-
-    // Skill Upgrade (+) Buttons
-    for (let i = 0; i < 3; i++) {
-      const upBtn = document.getElementById(`btn-up-${i+1}`);
-      if (upBtn) {
-        upBtn.onclick = (e) => {
-          e.stopPropagation();
-          this.upgradeSkill(i);
-        };
-      }
-    }
-
-    const btnHeal = document.getElementById('btn-spell-heal');
-    if (btnHeal) btnHeal.onclick = () => this.triggerHeal();
-
-    const btnFlash = document.getElementById('btn-spell-flash');
-    if (btnFlash) btnFlash.onclick = () => this.triggerFlash();
-
-    const btnRecall = document.getElementById('btn-spell-recall');
-    if (btnRecall) btnRecall.onclick = () => this.triggerRecall();
+    bindBtn('btn-main-attack', () => this.triggerMainAttack());
+    bindBtn('btn-push-tower', () => this.triggerPushTower());
+    bindBtn('btn-last-hit', () => this.triggerLastHit());
+    bindBtn('btn-skill-1', () => this.triggerSkill(0));
+    bindBtn('btn-skill-2', () => this.triggerSkill(1));
+    bindBtn('btn-skill-3', () => this.triggerSkill(2));
+    bindBtn('btn-up-1', () => this.upgradeSkill(0));
+    bindBtn('btn-up-2', () => this.upgradeSkill(1));
+    bindBtn('btn-up-3', () => this.upgradeSkill(2));
+    bindBtn('btn-spell-heal', () => this.triggerHeal());
+    bindBtn('btn-spell-flash', () => this.triggerFlash());
+    bindBtn('btn-spell-recall', () => this.triggerRecall());
   }
 
   upgradeSkill(index) {
@@ -3268,7 +3345,10 @@ class UIController {
     }, 2600);
   }
 }
-\n\n// --- js/moba/Game.js ---\n/**
+
+
+// --- js/moba/Game.js ---
+/**
  * Main MOBA Game Engine & Match Loop Orchestrator
  */
 class MobaGame {
@@ -3546,4 +3626,4 @@ class MobaGame {
     `;
   }
 }
-\n
+

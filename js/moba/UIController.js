@@ -34,25 +34,21 @@ class UIController {
   }
 
   initControls() {
-    // 1. Virtual Joystick (Touch / Mouse)
+    // 1. Virtual Joystick with Multi-Touch tracking
     const joyZone = document.getElementById('joystick-zone');
     const joyThumb = document.getElementById('joystick-thumb');
 
-    if (joyZone && joyThumb) {
-      const handleStart = (clientX, clientY) => {
-        const rect = joyZone.getBoundingClientRect();
-        this.joystick.startX = rect.left + rect.width / 2;
-        this.joystick.startY = rect.top + rect.height / 2;
-        this.joystick.active = true;
-        handleMove(clientX, clientY);
-      };
+    let joyTouchId = null;
 
-      const handleMove = (clientX, clientY) => {
-        if (!this.joystick.active) return;
-        const dx = clientX - this.joystick.startX;
-        const dy = clientY - this.joystick.startY;
+    if (joyZone && joyThumb) {
+      const updateJoystick = (clientX, clientY) => {
+        const rect = joyZone.getBoundingClientRect();
+        const startX = rect.left + rect.width / 2;
+        const startY = rect.top + rect.height / 2;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxR = this.joystick.radius;
+        const maxR = rect.width * 0.38;
 
         const clampedDist = Math.min(dist, maxR);
         const angle = Math.atan2(dy, dx);
@@ -69,8 +65,9 @@ class UIController {
         }
       };
 
-      const handleEnd = () => {
+      const resetJoystick = () => {
         this.joystick.active = false;
+        joyTouchId = null;
         joyThumb.style.transform = `translate(0px, 0px)`;
         this.joystick.dir.set(0, 0, 0);
         if (this.player && !this.keys.w && !this.keys.a && !this.keys.s && !this.keys.d) {
@@ -78,20 +75,58 @@ class UIController {
         }
       };
 
-      joyZone.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
-      window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
-      window.addEventListener('mouseup', handleEnd);
+      // Mouse support
+      joyZone.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.joystick.active = true;
+        updateJoystick(e.clientX, e.clientY);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (this.joystick.active && joyTouchId === null) {
+          updateJoystick(e.clientX, e.clientY);
+        }
+      });
+      window.addEventListener('mouseup', () => {
+        if (this.joystick.active && joyTouchId === null) {
+          resetJoystick();
+        }
+      });
 
+      // Touch Multi-touch support (independent from right thumb taps)
       joyZone.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 0) handleStart(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          joyTouchId = t.identifier;
+          this.joystick.active = true;
+          updateJoystick(t.clientX, t.clientY);
+        }
       }, { passive: false });
+
       window.addEventListener('touchmove', (e) => {
-        if (e.touches.length > 0) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        if (!this.joystick.active || joyTouchId === null) return;
+        for (let i = 0; i < e.touches.length; i++) {
+          if (e.touches[i].identifier === joyTouchId) {
+            updateJoystick(e.touches[i].clientX, e.touches[i].clientY);
+            break;
+          }
+        }
       }, { passive: false });
-      window.addEventListener('touchend', handleEnd);
+
+      window.addEventListener('touchend', (e) => {
+        if (!this.joystick.active || joyTouchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === joyTouchId) {
+            resetJoystick();
+            break;
+          }
+        }
+      });
+      window.addEventListener('touchcancel', resetJoystick);
     }
 
-    // 2. Keyboard Controls (WASD + Hotkeys)
+    // 2. Keyboard Controls (WASD + Hotkeys for PC)
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
       this.keys[k] = true;
@@ -114,44 +149,33 @@ class UIController {
       this.handleKeyboardMovement();
     });
 
-    // 3. UI Buttons Click Handlers
-    const btnAttack = document.getElementById('btn-main-attack');
-    if (btnAttack) btnAttack.onclick = () => this.triggerMainAttack();
+    // 3. Fast Touch & Click Bindings for All Buttons (Zero latency on mobile)
+    const bindBtn = (id, fn) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fn();
+      }, { passive: false });
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        fn();
+      });
+    };
 
-    const btnTower = document.getElementById('btn-push-tower');
-    if (btnTower) btnTower.onclick = () => this.triggerPushTower();
-
-    const btnMinion = document.getElementById('btn-last-hit');
-    if (btnMinion) btnMinion.onclick = () => this.triggerLastHit();
-
-    const btnS1 = document.getElementById('btn-skill-1');
-    if (btnS1) btnS1.onclick = () => this.triggerSkill(0);
-
-    const btnS2 = document.getElementById('btn-skill-2');
-    if (btnS2) btnS2.onclick = () => this.triggerSkill(1);
-
-    const btnS3 = document.getElementById('btn-skill-3');
-    if (btnS3) btnS3.onclick = () => this.triggerSkill(2);
-
-    // Skill Upgrade (+) Buttons
-    for (let i = 0; i < 3; i++) {
-      const upBtn = document.getElementById(`btn-up-${i+1}`);
-      if (upBtn) {
-        upBtn.onclick = (e) => {
-          e.stopPropagation();
-          this.upgradeSkill(i);
-        };
-      }
-    }
-
-    const btnHeal = document.getElementById('btn-spell-heal');
-    if (btnHeal) btnHeal.onclick = () => this.triggerHeal();
-
-    const btnFlash = document.getElementById('btn-spell-flash');
-    if (btnFlash) btnFlash.onclick = () => this.triggerFlash();
-
-    const btnRecall = document.getElementById('btn-spell-recall');
-    if (btnRecall) btnRecall.onclick = () => this.triggerRecall();
+    bindBtn('btn-main-attack', () => this.triggerMainAttack());
+    bindBtn('btn-push-tower', () => this.triggerPushTower());
+    bindBtn('btn-last-hit', () => this.triggerLastHit());
+    bindBtn('btn-skill-1', () => this.triggerSkill(0));
+    bindBtn('btn-skill-2', () => this.triggerSkill(1));
+    bindBtn('btn-skill-3', () => this.triggerSkill(2));
+    bindBtn('btn-up-1', () => this.upgradeSkill(0));
+    bindBtn('btn-up-2', () => this.upgradeSkill(1));
+    bindBtn('btn-up-3', () => this.upgradeSkill(2));
+    bindBtn('btn-spell-heal', () => this.triggerHeal());
+    bindBtn('btn-spell-flash', () => this.triggerFlash());
+    bindBtn('btn-spell-recall', () => this.triggerRecall());
   }
 
   upgradeSkill(index) {

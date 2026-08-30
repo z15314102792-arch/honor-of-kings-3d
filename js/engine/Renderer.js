@@ -24,8 +24,10 @@ class GameRenderer {
       antialias: true,
       powerPreference: 'high-performance'
     });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const w = window.innerWidth || 1920;
+    const h = window.innerHeight || 1080;
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -37,19 +39,19 @@ class GameRenderer {
 
   setupLighting() {
     // Ambient & Hemisphere light
-    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.65);
+    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.7);
     hemiLight.position.set(0, 50, 0);
     this.scene.add(hemiLight);
 
-    const ambientLight = new THREE.AmbientLight(0x2d3748, 0.4);
+    const ambientLight = new THREE.AmbientLight(0x2d3748, 0.45);
     this.scene.add(ambientLight);
 
-    // Sunlight (Directional with shadow casting)
+    // Sunlight
     this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.25);
     this.sunLight.position.set(35, 60, 45);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
     this.sunLight.shadow.camera.near = 10;
     this.sunLight.shadow.camera.far = 160;
     this.sunLight.shadow.camera.left = -50;
@@ -70,10 +72,20 @@ class GameRenderer {
   }
 
   setupEventListeners() {
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+    const handleResize = () => {
+      const w = window.innerWidth || document.documentElement.clientWidth;
+      const h = window.innerHeight || document.documentElement.clientHeight;
+      if (!w || !h) return;
+      this.camera.aspect = w / h;
+      this.camera.fov = (w / h < 1.6) ? 52 : 45;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setSize(w, h);
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(handleResize, 150);
+      setTimeout(handleResize, 350);
     });
   }
 
