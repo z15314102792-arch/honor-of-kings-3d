@@ -42,11 +42,20 @@ class UIController {
 
     if (joyZone && joyThumb) {
       const updateJoystick = (clientX, clientY) => {
+        const isRotated = (window.innerWidth < window.innerHeight && window.innerWidth <= 900);
         const rect = joyZone.getBoundingClientRect();
         const startX = rect.left + rect.width / 2;
         const startY = rect.top + rect.height / 2;
-        const dx = clientX - startX;
-        const dy = clientY - startY;
+        let dx = clientX - startX;
+        let dy = clientY - startY;
+
+        if (isRotated) {
+          const rdx = dy;
+          const rdy = -dx;
+          dx = rdx;
+          dy = rdy;
+        }
+
         const dist = Math.sqrt(dx * dx + dy * dy);
         const maxR = rect.width * 0.38;
 

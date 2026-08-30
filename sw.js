@@ -1,10 +1,10 @@
-const CACHE_NAME = 'moba-kings-v3.0.0';
+const CACHE_NAME = 'moba-kings-v3.1.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './css/style.css?v=3.0.0',
-  './js/three.min.js',
-  './js/bundle.js?v=3.0.0',
+  './css/style.css?v=3.1.0',
+  './js/three.min.js?v=3.1.0',
+  './js/bundle.js?v=3.1.0',
   './manifest.json',
   './assets/icon-192.png',
   './assets/icon-512.png'

@@ -19,11 +19,25 @@ body, html {
 }
 
 #game-container {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
   background: #000;
+}
+
+/* Auto Landscape Engine: If screen is portrait (e.g. system rotation locked), rotate stage 90deg smoothly */
+@media screen and (orientation: portrait) and (max-width: 900px) {
+  #game-container {
+    width: 100vh;
+    height: 100vw;
+    transform: rotate(90deg);
+    transform-origin: top left;
+    left: 100vw;
+    top: 0;
+  }
 }
 
 #webgl-canvas {
@@ -36,43 +50,6 @@ body, html {
   display: block;
 }
 
-/* ================= ROTATE DEVICE PROMPT ================= */
-#rotate-device-prompt {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #050b14;
-  z-index: 99999;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #f1c40f;
-  font-size: 17px;
-  font-weight: bold;
-  text-align: center;
-  padding: 24px;
-}
-
-.rotate-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  animation: rotate-phone 2s infinite ease-in-out;
-}
-
-@keyframes rotate-phone {
-  0% { transform: rotate(0deg); }
-  50% { transform: rotate(-90deg); }
-  100% { transform: rotate(-90deg); }
-}
-
-@media screen and (orientation: portrait) and (max-width: 900px) {
-  #rotate-device-prompt {
-    display: flex;
-  }
-}
 
 /* ================= 2D HUD OVERLAY ================= */
 #hud-overlay {
