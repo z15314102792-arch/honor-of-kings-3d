@@ -20,20 +20,37 @@ class GameRenderer {
     this.cameraOffset = new THREE.Vector3(0, 26, 20);
     this.cameraTarget = new THREE.Vector3(0, 0, 0);
 
-    // WebGL Renderer
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: true,
-      powerPreference: 'high-performance'
-    });
-    const w = window.innerWidth || 1920;
-    const h = window.innerHeight || 1080;
+    // Mobile detection
+    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+
+    // WebGL Renderer with graceful fallback
+    try {
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: !this.isMobile,
+        powerPreference: this.isMobile ? 'default' : 'high-performance',
+        precision: this.isMobile ? 'mediump' : 'highp',
+        alpha: false
+      });
+    } catch (e) {
+      console.warn('Fallback WebGL initialization:', e);
+      this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas });
+    }
+
+    const w = window.innerWidth || document.documentElement.clientWidth || 1920;
+    const h = window.innerHeight || document.documentElement.clientHeight || 1080;
     this.renderer.setSize(w, h);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2));
+    
+    if (!this.isMobile) {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.15;
+    } else {
+      this.renderer.shadowMap.enabled = false;
+      this.renderer.toneMapping = THREE.LinearToneMapping;
+    }
 
     this.setupLighting();
     this.setupEventListeners();

@@ -10,9 +10,9 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <title>王者荣耀 3D Web MOBA - 高还原度自研引擎版</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.0.0">
   <!-- Three.js Engine -->
-  <script src="js/three.min.js"></script>
+  <script src="js/three.min.js?v=3.0.0"></script>
   <script>
     if (typeof THREE === 'undefined') {
       document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
@@ -204,6 +204,7 @@
         </div>
       </div>
       <button class="btn-start-battle" onclick="startGame()">进入王者峡谷</button>
+      <div style="font-size: 11px; color: #64748b; margin-top: 14px; letter-spacing: 0.5px;">当前版本: v3.0.0 (手机自适应/轻量兼容版)</div>
     </div>
 
     <!-- Game Over Modal -->
@@ -211,13 +212,18 @@
   </div>
 
   <!-- Game Engine Bundle -->
-  <script src="js/bundle.js"></script>
+  <script src="js/bundle.js?v=3.0.0"></script>
 
   <script>
-    // Register PWA Service Worker for App capability & offline cache
+    // Force clean old Service Workers and register latest version
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration skipped:', err));
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let registration of registrations) {
+            registration.update();
+          }
+        });
+        navigator.serviceWorker.register('./sw.js?v=3.0.0').catch(err => console.log('SW update:', err));
       });
     }
 
@@ -231,10 +237,16 @@
 
     function startGame() {
       // Audio unlock on user interaction
-      if (typeof Sound !== 'undefined') Sound.init();
+      try {
+        if (typeof Sound !== 'undefined') Sound.init();
+      } catch (e) {}
       document.getElementById('hero-select-modal').style.display = 'none';
-      const game = new MobaGame();
-      game.startMatch(selectedHero);
+      try {
+        const game = new MobaGame();
+        game.startMatch(selectedHero);
+      } catch (err) {
+        console.error('Failed to start match:', err);
+      }
     }
   </script>
 </body>
