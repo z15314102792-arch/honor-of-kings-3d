@@ -22,22 +22,12 @@ body, html {
   position: fixed;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #000;
-}
-
-/* Auto Landscape Engine: If screen is portrait (e.g. system rotation locked), rotate stage 90deg smoothly */
-@media screen and (orientation: portrait) and (max-width: 900px) {
-  #game-container {
-    width: 100vh;
-    height: 100vw;
-    transform: rotate(90deg);
-    transform-origin: top left;
-    left: 100vw;
-    top: 0;
-  }
+  background: #050b14;
 }
 
 #webgl-canvas {
@@ -49,6 +39,7 @@ body, html {
   z-index: 1;
   display: block;
 }
+
 
 
 /* ================= 2D HUD OVERLAY ================= */

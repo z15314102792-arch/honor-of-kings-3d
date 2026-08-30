@@ -42,19 +42,11 @@ class UIController {
 
     if (joyZone && joyThumb) {
       const updateJoystick = (clientX, clientY) => {
-        const isRotated = (window.innerWidth < window.innerHeight && window.innerWidth <= 900);
         const rect = joyZone.getBoundingClientRect();
         const startX = rect.left + rect.width / 2;
         const startY = rect.top + rect.height / 2;
-        let dx = clientX - startX;
-        let dy = clientY - startY;
-
-        if (isRotated) {
-          const rdx = dy;
-          const rdy = -dx;
-          dx = rdx;
-          dy = rdy;
-        }
+        const dx = clientX - startX;
+        const dy = clientY - startY;
 
         const dist = Math.sqrt(dx * dx + dy * dy);
         const maxR = rect.width * 0.38;
@@ -142,7 +134,7 @@ class UIController {
       this.handleKeyboardMovement();
 
       if (k === '1' || k === 'q') this.triggerSkill(0);
-      if (k === '2' || k === 'w' && e.ctrlKey) this.triggerSkill(1);
+      if (k === '2' || (k === 'w' && e.ctrlKey)) this.triggerSkill(1);
       if (k === 'e' || k === '2') this.triggerSkill(1);
       if (k === '3' || k === 'r') this.triggerSkill(2);
       if (k === ' ' || k === 'j') this.triggerMainAttack();
@@ -192,7 +184,7 @@ class UIController {
     this.player.skillPoints--;
     this.player.skillLevels[index]++;
     this.player.vfx.createFloatingText(`升级技能 ${index + 1}!`, this.player.position, "heal");
-    Sound.playLevelUp();
+    Sound.playLevelUp ? Sound.playLevelUp() : Sound.playTone(800, 'sine', 0.2, 0.3);
   }
 
   handleKeyboardMovement() {
@@ -214,51 +206,45 @@ class UIController {
   triggerMainAttack() {
     if (!this.player || this.player.isDead) return;
     const target = this.game.getBestAttackTarget(this.player, 'any');
-    if (target) {
-      this.player.performBasicAttack(target);
-    }
+    this.player.performBasicAttack(target);
   }
 
   triggerPushTower() {
     if (!this.player || this.player.isDead) return;
-    const target = this.game.getBestAttackTarget(this.player, 'tower');
-    if (target) {
-      this.player.performBasicAttack(target);
-    }
+    const target = this.game.getBestAttackTarget(this.player, 'tower') || this.game.getBestAttackTarget(this.player, 'any');
+    this.player.performBasicAttack(target);
   }
 
   triggerLastHit() {
     if (!this.player || this.player.isDead) return;
-    const target = this.game.getBestAttackTarget(this.player, 'minion');
-    if (target) {
-      this.player.performBasicAttack(target);
-    }
+    const target = this.game.getBestAttackTarget(this.player, 'minion') || this.game.getBestAttackTarget(this.player, 'any');
+    this.player.performBasicAttack(target);
   }
 
   triggerSkill(index) {
     if (!this.player || this.player.isDead) return;
     const enemies = this.game.getEnemiesFor(this.player.team);
-    const closestHero = enemies.find(e => e instanceof Hero && !e.isDead && this.player.position.distanceTo(e.position) < 14);
+    const closestHero = enemies.find(e => !e.isDead && (e instanceof Hero || e.hp !== undefined) && this.player.position.distanceTo(e.position) < 14);
 
     if (index === 0) {
       if (this.player.castSkill1) this.player.castSkill1(this.player.velocity);
     } else if (index === 1) {
       if (this.player instanceof HeroHouyi) {
-        const aimPos = closestHero ? closestHero.position : this.player.position.clone().add(new THREE.Vector3(0,0,-8));
+        const aimPos = closestHero ? closestHero.position.clone() : this.player.position.clone().add(new THREE.Vector3(0, 0, -8).applyQuaternion(this.player.group.quaternion));
         this.player.castSkill2(aimPos);
       } else if (this.player instanceof HeroDaji) {
-        if (closestHero) this.player.castSkill2(closestHero);
-      } else {
+        this.player.castSkill2(closestHero);
+      } else if (this.player.castSkill2) {
         this.player.castSkill2();
       }
     } else if (index === 2) {
       if (this.player instanceof HeroArthur) {
-        if (closestHero) this.player.castSkill3(closestHero);
+        this.player.castSkill3(closestHero);
       } else if (this.player instanceof HeroHouyi) {
-        const aimDir = closestHero ? closestHero.position.clone().sub(this.player.position).normalize() : new THREE.Vector3(0,0,-1);
+        const aimDir = closestHero ? closestHero.position.clone().sub(this.player.position).normalize() : new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.group.quaternion);
         this.player.castSkill3(aimDir);
       } else if (this.player instanceof HeroDaji) {
-        if (closestHero) this.player.castSkill3(closestHero);
+        this.player.castSkill3(closestHero);
       }
     }
   }
@@ -274,6 +260,7 @@ class UIController {
   triggerRecall() {
     if (this.player) this.player.startRecall();
   }
+
 
   update(delta) {
     this.updateHUD();

@@ -8,18 +8,19 @@ class GameRenderer {
     this.scene.background = new THREE.Color(0x050b14);
     this.scene.fog = new THREE.FogExp2(0x0a1424, 0.007);
 
-    // Camera setup (Classic MOBA isometric perspective)
+    // Camera setup (Classic MOBA isometric perspective with HERO PERFECTLY CENTERED)
+    const w = window.innerWidth || document.documentElement.clientWidth || 1920;
+    const h = window.innerHeight || document.documentElement.clientHeight || 1080;
+    const isPortrait = h > w;
+
     this.camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
+      isPortrait ? 56 : 45,
+      w / h,
       0.1,
       1000
     );
-    this.cameraOffset = new THREE.Vector3(0, 26, 20);
+    this.cameraOffset = isPortrait ? new THREE.Vector3(0, 32, 20) : new THREE.Vector3(0, 28, 16);
     this.cameraTarget = new THREE.Vector3(0, 0, 0);
-
-    // Mobile detection
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
 
     // WebGL Renderer with graceful fallback
     try {
@@ -35,8 +36,6 @@ class GameRenderer {
       this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas });
     }
 
-    const w = window.innerWidth || document.documentElement.clientWidth || 1920;
-    const h = window.innerHeight || document.documentElement.clientHeight || 1080;
     this.renderer.setSize(w, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2));
     
@@ -56,15 +55,15 @@ class GameRenderer {
 
   setupLighting() {
     // Ambient & Hemisphere light
-    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.7);
+    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.75);
     hemiLight.position.set(0, 50, 0);
     this.scene.add(hemiLight);
 
-    const ambientLight = new THREE.AmbientLight(0x2d3748, 0.45);
+    const ambientLight = new THREE.AmbientLight(0x334155, 0.5);
     this.scene.add(ambientLight);
 
     // Sunlight
-    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.25);
+    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.3);
     this.sunLight.position.set(35, 60, 45);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 1024;
@@ -93,8 +92,10 @@ class GameRenderer {
       const w = window.innerWidth || document.documentElement.clientWidth;
       const h = window.innerHeight || document.documentElement.clientHeight;
       if (!w || !h) return;
+      const isPortrait = h > w;
       this.camera.aspect = w / h;
-      this.camera.fov = (w / h < 1.6) ? 52 : 45;
+      this.camera.fov = isPortrait ? 56 : 45;
+      this.cameraOffset = isPortrait ? new THREE.Vector3(0, 32, 20) : new THREE.Vector3(0, 28, 16);
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(w, h);
     };
@@ -109,15 +110,16 @@ class GameRenderer {
   updateCamera(targetPos, delta = 0.016) {
     if (!targetPos) return;
     
-    // Smooth camera lerp
-    this.cameraTarget.lerp(targetPos, 0.12);
+    // Smooth camera lerp - Target is EXACTLY at character position
+    this.cameraTarget.lerp(targetPos, 0.15);
     
     this.camera.position.set(
       this.cameraTarget.x + this.cameraOffset.x,
       this.cameraTarget.y + this.cameraOffset.y,
       this.cameraTarget.z + this.cameraOffset.z
     );
-    this.camera.lookAt(this.cameraTarget.x, 0, this.cameraTarget.z - 2);
+    // Camera looks directly at player position with slight elevation to keep hero dead center
+    this.camera.lookAt(this.cameraTarget.x, 0.6, this.cameraTarget.z);
 
     // Update shadow camera target around player
     if (this.sunLight) {
@@ -135,3 +137,4 @@ class GameRenderer {
     this.renderer.render(this.scene, this.camera);
   }
 }
+

@@ -10,18 +10,19 @@ class GameRenderer {
     this.scene.background = new THREE.Color(0x050b14);
     this.scene.fog = new THREE.FogExp2(0x0a1424, 0.007);
 
-    // Camera setup (Classic MOBA isometric perspective)
+    // Camera setup (Classic MOBA isometric perspective with HERO PERFECTLY CENTERED)
+    const w = window.innerWidth || document.documentElement.clientWidth || 1920;
+    const h = window.innerHeight || document.documentElement.clientHeight || 1080;
+    const isPortrait = h > w;
+
     this.camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
+      isPortrait ? 56 : 45,
+      w / h,
       0.1,
       1000
     );
-    this.cameraOffset = new THREE.Vector3(0, 26, 20);
+    this.cameraOffset = isPortrait ? new THREE.Vector3(0, 32, 20) : new THREE.Vector3(0, 28, 16);
     this.cameraTarget = new THREE.Vector3(0, 0, 0);
-
-    // Mobile detection
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
 
     // WebGL Renderer with graceful fallback
     try {
@@ -37,8 +38,6 @@ class GameRenderer {
       this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas });
     }
 
-    const w = window.innerWidth || document.documentElement.clientWidth || 1920;
-    const h = window.innerHeight || document.documentElement.clientHeight || 1080;
     this.renderer.setSize(w, h);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2));
     
@@ -58,15 +57,15 @@ class GameRenderer {
 
   setupLighting() {
     // Ambient & Hemisphere light
-    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.7);
+    const hemiLight = new THREE.HemisphereLight(0xb1e1ff, 0x1f293d, 0.75);
     hemiLight.position.set(0, 50, 0);
     this.scene.add(hemiLight);
 
-    const ambientLight = new THREE.AmbientLight(0x2d3748, 0.45);
+    const ambientLight = new THREE.AmbientLight(0x334155, 0.5);
     this.scene.add(ambientLight);
 
     // Sunlight
-    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.25);
+    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.3);
     this.sunLight.position.set(35, 60, 45);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 1024;
@@ -95,8 +94,10 @@ class GameRenderer {
       const w = window.innerWidth || document.documentElement.clientWidth;
       const h = window.innerHeight || document.documentElement.clientHeight;
       if (!w || !h) return;
+      const isPortrait = h > w;
       this.camera.aspect = w / h;
-      this.camera.fov = (w / h < 1.6) ? 52 : 45;
+      this.camera.fov = isPortrait ? 56 : 45;
+      this.cameraOffset = isPortrait ? new THREE.Vector3(0, 32, 20) : new THREE.Vector3(0, 28, 16);
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(w, h);
     };
@@ -111,15 +112,16 @@ class GameRenderer {
   updateCamera(targetPos, delta = 0.016) {
     if (!targetPos) return;
     
-    // Smooth camera lerp
-    this.cameraTarget.lerp(targetPos, 0.12);
+    // Smooth camera lerp - Target is EXACTLY at character position
+    this.cameraTarget.lerp(targetPos, 0.15);
     
     this.camera.position.set(
       this.cameraTarget.x + this.cameraOffset.x,
       this.cameraTarget.y + this.cameraOffset.y,
       this.cameraTarget.z + this.cameraOffset.z
     );
-    this.camera.lookAt(this.cameraTarget.x, 0, this.cameraTarget.z - 2);
+    // Camera looks directly at player position with slight elevation to keep hero dead center
+    this.camera.lookAt(this.cameraTarget.x, 0.6, this.cameraTarget.z);
 
     // Update shadow camera target around player
     if (this.sunLight) {
@@ -137,6 +139,7 @@ class GameRenderer {
     this.renderer.render(this.scene, this.camera);
   }
 }
+
 
 
 // --- js/engine/Audio.js ---
@@ -1875,6 +1878,7 @@ class Hero {
       this.recallTimer = 0;
       const bar = document.getElementById('channeling-bar-container');
       if (bar && this.isPlayer) bar.style.display = 'none';
+      if (this.isPlayer) this.vfx.createFloatingText("回城已打断", this.position, "physical");
     }
   }
 
@@ -1883,6 +1887,13 @@ class Hero {
     this.isChannelingRecall = true;
     this.recallTimer = 7.0; // 7 seconds channel
     Sound.playRecall();
+    const bar = document.getElementById('channeling-bar-container');
+    if (bar && this.isPlayer) {
+      bar.style.display = 'flex';
+      const fill = document.getElementById('channeling-fill');
+      if (fill) fill.style.width = '0%';
+    }
+    this.vfx.createHitSparks(this.position, 0x38bdf8, 20);
   }
 
   castFlash(direction) {
@@ -1890,20 +1901,29 @@ class Hero {
     this.flashCd = 120; // 120s CD
     this.cancelRecall();
 
-    const dir = direction ? direction.clone().normalize() : new THREE.Vector3(0, 0, -1);
-    this.position.addScaledVector(dir, 7.0);
+    let dir = direction && direction.lengthSq() > 0.001 ? direction.clone().normalize() : null;
+    if (!dir) {
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion);
+      dir = forward.normalize();
+    }
+    this.position.addScaledVector(dir, 7.5);
     this.group.position.copy(this.position);
-    this.vfx.createHitSparks(this.position, 0xffd700, 20);
+    this.vfx.createHitSparks(this.position, 0xfde047, 30);
+    this.vfx.createFloatingText("闪现!", this.position, "heal");
     Sound.playArthurS1();
   }
 
   castHeal() {
     if (this.isDead || this.healCd > 0) return;
     this.healCd = 60; // 60s CD
-    const healAmount = this.maxHp * 0.15 + 200;
+    this.cancelRecall();
+    const healAmount = this.maxHp * 0.25 + 250;
     this.hp = Math.min(this.maxHp, this.hp + healAmount);
-    this.vfx.createFloatingText(`+${Math.round(healAmount)}`, this.position, "heal");
-    this.vfx.createHitSparks(this.position, 0x10b981, 15);
+    this.moveSpeed += 1.5;
+    setTimeout(() => { this.moveSpeed = Math.max(7.0, this.moveSpeed - 1.5); }, 3000);
+
+    this.vfx.createFloatingText(`+${Math.round(healAmount)} 治疗!`, this.position, "heal");
+    this.vfx.createHitSparks(this.position, 0x10b981, 25);
     Sound.playTone(660, 'sine', 0.3, 0.4);
   }
 
@@ -1937,6 +1957,7 @@ class Hero {
 
   die(killer) {
     this.isDead = true;
+    this.cancelRecall();
     this.hp = 0;
     this.deaths++;
     this.group.visible = false;
@@ -2004,20 +2025,37 @@ class Hero {
     }
 
     // Fountain Healing (if at home base)
-    const homePos = new THREE.Vector3(this.team === 'blue' ? -52 : 52, 0, this.team === 'blue' ? 52 : -52);
-    if (this.position.distanceTo(homePos) < 9) {
-      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.25 * delta);
-      this.mana = Math.min(this.maxMana, this.mana + this.maxMana * 0.35 * delta);
+    const homePos = new THREE.Vector3(this.team === 'blue' ? -50 : 50, 0, this.team === 'blue' ? 50 : -50);
+    if (this.position.distanceTo(homePos) < 12) {
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.35 * delta);
+      this.mana = Math.min(this.maxMana, this.mana + this.maxMana * 0.45 * delta);
     }
 
-    // Recall Channeling
+    // Recall Channeling with movement interruption
     if (this.isChannelingRecall) {
-      this.recallTimer -= delta;
-      if (this.recallTimer <= 0) {
-        this.isChannelingRecall = false;
-        this.position.copy(homePos);
-        this.group.position.copy(this.position);
-        this.vfx.createHitSparks(this.position, 0x38bdf8, 30);
+      if (this.velocity.lengthSq() > 0.001) {
+        this.cancelRecall();
+      } else {
+        this.recallTimer -= delta;
+        if (this.isPlayer) {
+          const fill = document.getElementById('channeling-fill');
+          if (fill) {
+            const progress = Math.min(100, Math.max(0, (1 - this.recallTimer / 7.0) * 100));
+            fill.style.width = `${progress}%`;
+          }
+        }
+        if (this.recallTimer <= 0) {
+          this.isChannelingRecall = false;
+          this.position.copy(homePos);
+          this.group.position.copy(this.position);
+          this.hp = this.maxHp;
+          this.mana = this.maxMana;
+          this.vfx.createHitSparks(this.position, 0x38bdf8, 40);
+          this.vfx.createFloatingText("满状态传送!", this.position, "heal");
+          Sound.playRecall();
+          const bar = document.getElementById('channeling-bar-container');
+          if (bar && this.isPlayer) bar.style.display = 'none';
+        }
       }
     }
 
@@ -2067,33 +2105,41 @@ class Hero {
 
     const isCrit = Math.random() < this.critRate;
     let dmg = this.ad * (isCrit ? this.critDamage : 1.0);
-
     this.attackCooldown = 1 / this.attackSpeed;
-    this.group.lookAt(target.position.x, this.position.y, target.position.z);
 
-    if (this.attackRange <= 3.0) {
-      // Melee strike
-      Sound.playAttackSound();
-      target.takeDamage(dmg, this, isCrit ? 'crit' : 'physical');
+    if (target) {
+      this.group.lookAt(target.position.x, this.position.y, target.position.z);
 
-      // Red buff burn & slow
-      if (this.buffs.red_buff > 0 && target.applySlow) {
-        target.applySlow(0.25, 2.0);
-        target.takeDamage(40 + this.level * 5, this, 'true');
-      }
-    } else {
-      // Ranged projectile
-      Sound.playArrowSound();
-      this.vfx.createBullet(this.position, target, 0xfacc15, 22, () => {
+      if (this.attackRange > 3.0) {
+        Sound.playShoot ? Sound.playShoot() : Sound.playArrowSound();
+        this.vfx.createBullet(this.position, target, 0xfacc15, 22, () => {
+          target.takeDamage(dmg, this, isCrit ? 'crit' : 'physical');
+          if (this.buffs.red_buff > 0 && target.applySlow) {
+            target.applySlow(0.25, 2.0);
+            target.takeDamage(40 + this.level * 5, this, 'true');
+          }
+        });
+      } else {
+        Sound.playHitSound ? Sound.playHitSound() : Sound.playAttackSound();
         target.takeDamage(dmg, this, isCrit ? 'crit' : 'physical');
+        this.vfx.createHitSparks(target.position, isCrit ? 0xef4444 : 0xf59e0b, isCrit ? 22 : 12);
+        if (isCrit) {
+          this.vfx.createFloatingText(`暴击 ${Math.round(dmg)}!`, target.position, "physical");
+        }
         if (this.buffs.red_buff > 0 && target.applySlow) {
           target.applySlow(0.25, 2.0);
           target.takeDamage(40 + this.level * 5, this, 'true');
         }
-      });
+      }
+    } else {
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion);
+      const strikePos = this.position.clone().addScaledVector(forward, 2.0);
+      this.vfx.createHitSparks(strikePos, 0x60a5fa, 8);
+      Sound.playShoot ? Sound.playShoot() : Sound.playAttackSound();
     }
   }
 }
+
 
 
 // --- js/moba/HeroArthur.js ---
@@ -2126,73 +2172,119 @@ class HeroArthur extends Hero {
   }
 
   buildArthurModel() {
-    // Golden Heavy Knight Armor
-    const armorMat = new THREE.MeshStandardMaterial({
-      color: 0xd4af37,
-      metalness: 0.8,
-      roughness: 0.25
+    // Premium Golden Heavy Knight Armor
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xeab308,
+      metalness: 0.85,
+      roughness: 0.2
     });
-    const blueClothMat = new THREE.MeshStandardMaterial({
-      color: this.team === 'blue' ? 0x1e3a8a : 0x991b1b,
-      roughness: 0.6
+    const blueArmorMat = new THREE.MeshStandardMaterial({
+      color: this.team === 'blue' ? 0x1d4ed8 : 0xb91c1c,
+      metalness: 0.6,
+      roughness: 0.35
+    });
+    const glowVisorMat = new THREE.MeshBasicMaterial({
+      color: this.team === 'blue' ? 0x38bdf8 : 0xf87171
     });
 
-    // Torso
-    const torsoGeo = new THREE.BoxGeometry(1.2, 1.4, 0.9);
-    const torso = new THREE.Mesh(torsoGeo, armorMat);
+    // 1. Torso & Chestplate
+    const torsoGeo = new THREE.CylinderGeometry(0.7, 0.55, 1.4, 8);
+    const torso = new THREE.Mesh(torsoGeo, blueArmorMat);
     torso.position.y = 1.6;
     torso.castShadow = true;
     this.group.add(torso);
 
-    // Helmet & Head
-    const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-    const head = new THREE.Mesh(headGeo, armorMat);
-    head.position.y = 2.7;
-    head.castShadow = true;
-    this.group.add(head);
+    const breastplate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.8, 0.7), goldMat);
+    breastplate.position.set(0, 1.7, 0.15);
+    this.group.add(breastplate);
 
-    // Cape
-    const capeGeo = new THREE.BoxGeometry(1.1, 1.8, 0.1);
-    const cape = new THREE.Mesh(capeGeo, blueClothMat);
-    cape.position.set(0, 1.4, -0.5);
-    cape.rotation.x = 0.1;
+    // 2. Helmet & Glowing Visor
+    const helmGeo = new THREE.CylinderGeometry(0.45, 0.4, 0.75, 8);
+    const helm = new THREE.Mesh(helmGeo, goldMat);
+    helm.position.y = 2.65;
+    helm.castShadow = true;
+    this.group.add(helm);
+
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.2), glowVisorMat);
+    visor.position.set(0, 2.65, 0.35);
+    this.group.add(visor);
+
+    // Helmet Crest
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.45, 0.8), blueArmorMat);
+    crest.position.set(0, 3.0, 0);
+    this.group.add(crest);
+
+    // 3. Dual Winged Pauldrons (Shoulders)
+    const leftPauldron = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), goldMat);
+    leftPauldron.position.set(-0.85, 2.1, 0);
+    this.group.add(leftPauldron);
+
+    const rightPauldron = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), goldMat);
+    rightPauldron.position.set(0.85, 2.1, 0);
+    this.group.add(rightPauldron);
+
+    // 4. Flowing Cape
+    const capeGeo = new THREE.BoxGeometry(1.2, 1.8, 0.08);
+    const cape = new THREE.Mesh(capeGeo, blueArmorMat);
+    cape.position.set(0, 1.4, -0.45);
+    cape.rotation.x = 0.15;
     this.group.add(cape);
 
-    // Holy Broadsword
-    const swordGeo = new THREE.BoxGeometry(0.2, 2.2, 0.5);
-    const swordMat = new THREE.MeshStandardMaterial({
-      color: 0xf3f4f6,
+    // 5. Holy Runic Broadsword
+    const swordGroup = new THREE.Group();
+    const bladeGeo = new THREE.BoxGeometry(0.22, 2.2, 0.4);
+    const bladeMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
       metalness: 0.9,
-      roughness: 0.1
+      roughness: 0.1,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.35
     });
-    this.swordMesh = new THREE.Mesh(swordGeo, swordMat);
-    this.swordMesh.position.set(0.8, 1.6, 0.4);
-    this.swordMesh.rotation.x = Math.PI / 4;
-    this.group.add(this.swordMesh);
+    this.swordMesh = new THREE.Mesh(bladeGeo, bladeMat);
+    this.swordMesh.position.y = 1.1;
+    swordGroup.add(this.swordMesh);
 
-    // Heavy Shield
-    const shieldGeo = new THREE.BoxGeometry(0.25, 1.6, 1.1);
-    const shield = new THREE.Mesh(shieldGeo, armorMat);
-    shield.position.set(-0.8, 1.5, 0.3);
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.9), goldMat);
+    guard.position.y = 0.05;
+    swordGroup.add(guard);
+
+    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), goldMat);
+    hilt.position.y = -0.3;
+    swordGroup.add(hilt);
+
+    swordGroup.position.set(0.85, 1.2, 0.4);
+    swordGroup.rotation.x = Math.PI / 4;
+    swordGroup.rotation.z = -0.2;
+    this.group.add(swordGroup);
+
+    // 6. Royal Tower Shield
+    const shieldGeo = new THREE.BoxGeometry(0.2, 1.6, 1.0);
+    const shield = new THREE.Mesh(shieldGeo, goldMat);
+    shield.position.set(-0.85, 1.5, 0.35);
+    const shieldCrest = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.5), blueArmorMat);
+    shieldCrest.position.set(-0.85, 1.5, 0.35);
     this.group.add(shield);
+    this.group.add(shieldCrest);
   }
 
   // S1: 誓约之盾
   castSkill1() {
     if (this.isDead || this.silenceDuration > 0 || this.skillCds[0] > 0) return;
+    this.cancelRecall();
     this.skillCds[0] = this.skillMaxCds[0] * (1 - this.cdr);
     this.s1Active = true;
-    this.s1Timer = 3.5;
-    this.moveSpeed = 9.5; // +35% Move Speed boost
+    this.s1Timer = 4.0;
+    this.moveSpeed = 9.8; // +40% Move Speed boost
 
-    Sound.playArthurS1();
-    this.vfx.createFloatingText("誓约之盾!", this.position, "physical");
-    this.vfx.createHitSparks(this.position, 0xffd700, 15);
+    Sound.playArthurS1 ? Sound.playArthurS1() : Sound.playTone(520, 'triangle', 0.2, 0.3);
+    this.vfx.createFloatingText("誓约之盾!", this.position, "heal");
+    this.vfx.createHitSparks(this.position, 0xfde047, 25);
   }
 
   // S2: 回旋打击
   castSkill2() {
     if (this.isDead || this.silenceDuration > 0 || this.skillCds[1] > 0) return;
+    this.cancelRecall();
     this.skillCds[1] = this.skillMaxCds[1] * (1 - this.cdr);
     this.s2Active = true;
     this.s2Timer = 5.0;
@@ -2200,31 +2292,38 @@ class HeroArthur extends Hero {
     if (!this.s2ShieldGroup) {
       this.s2ShieldGroup = this.vfx.createArthurShields(this);
     }
-    Sound.playArthurS2();
+    Sound.playArthurS2 ? Sound.playArthurS2() : Sound.playTone(440, 'sine', 0.3, 0.4);
+    this.vfx.createFloatingText("回旋圣盾!", this.position, "heal");
   }
 
   // S3: 圣剑裁决 (Ultimate Ground Slam)
   castSkill3(targetHero) {
-    if (this.isDead || this.silenceDuration > 0 || this.skillCds[2] > 0 || !targetHero) return;
+    if (this.isDead || this.silenceDuration > 0 || this.skillCds[2] > 0) return;
+    this.cancelRecall();
     this.skillCds[2] = this.skillMaxCds[2] * (1 - this.cdr);
 
-    Sound.playArthurS3();
+    Sound.playArthurS3 ? Sound.playArthurS3() : Sound.playTone(330, 'sawtooth', 0.4, 0.5);
     this.applyKnockup(0.6); // Arthur leap airtime
+
+    const slamPos = targetHero ? targetHero.position.clone() : this.position.clone().add(new THREE.Vector3(0, 0, -5).applyQuaternion(this.group.quaternion));
 
     // Leap onto target position
     setTimeout(() => {
-      this.position.copy(targetHero.position);
+      this.position.copy(slamPos);
       this.group.position.copy(this.position);
 
-      // Deal 16% Max HP Magic Damage + 0.8s Knockup
-      const ultDmg = targetHero.maxHp * 0.16 + 350 + this.ad * 0.5;
-      targetHero.takeDamage(ultDmg, this, 'magic');
-      targetHero.applyKnockup(0.8);
+      const ultDmg = (targetHero ? targetHero.maxHp * 0.16 : 400) + 400 + this.ad * 0.6;
+      if (targetHero) {
+        targetHero.takeDamage(ultDmg, this, 'magic');
+        targetHero.applyKnockup(0.8);
+      }
 
       this.vfx.createArthurUltDecal(this.position);
-      this.vfx.createHitSparks(this.position, 0xf59e0b, 35);
-    }, 300);
+      this.vfx.createHitSparks(this.position, 0xf59e0b, 40);
+      this.vfx.createFloatingText("圣剑裁决·斩杀!", this.position, "physical");
+    }, 280);
   }
+
 
   performBasicAttack(target) {
     if (this.s1Active) {
@@ -2326,36 +2425,71 @@ class HeroHouyi extends Hero {
   }
 
   buildHouyiModel() {
-    const robeMat = new THREE.MeshStandardMaterial({
-      color: this.team === 'blue' ? 0x2563eb : 0xdc2626,
-      roughness: 0.5
-    });
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xf59e0b,
-      metalness: 0.8
+      metalness: 0.85,
+      roughness: 0.2
+    });
+    const robeMat = new THREE.MeshStandardMaterial({
+      color: this.team === 'blue' ? 0x2563eb : 0xdc2626,
+      roughness: 0.4
+    });
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.3
+    });
+    const glowStringMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a
     });
 
-    // Body
-    const bodyGeo = new THREE.CylinderGeometry(0.5, 0.4, 1.5, 8);
+    // 1. Tunic & Solar Armor
+    const bodyGeo = new THREE.CylinderGeometry(0.55, 0.4, 1.5, 8);
     const body = new THREE.Mesh(bodyGeo, robeMat);
     body.position.y = 1.5;
     body.castShadow = true;
     this.group.add(body);
 
-    // Sun Crown
-    const crownGeo = new THREE.TorusGeometry(0.4, 0.08, 8, 16);
-    const crown = new THREE.Mesh(crownGeo, goldMat);
-    crown.position.y = 2.6;
-    crown.rotation.x = Math.PI / 2;
-    this.group.add(crown);
+    const chestGold = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.5), goldMat);
+    chestGold.position.set(0, 1.7, 0.1);
+    this.group.add(chestGold);
 
-    // Glowing Golden Bow
-    const bowGeo = new THREE.TorusGeometry(0.8, 0.06, 6, 16, Math.PI);
-    const bow = new THREE.Mesh(bowGeo, goldMat);
-    bow.position.set(0.6, 1.5, 0.4);
-    bow.rotation.y = Math.PI / 2;
-    this.group.add(bow);
+    // 2. Head & Solar Feather Tiara
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), whiteMat);
+    head.position.y = 2.55;
+    this.group.add(head);
+
+    const tiara = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 4), goldMat);
+    tiara.position.set(0, 2.9, 0.1);
+    this.group.add(tiara);
+
+    // 3. Quiver on Back
+    const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 1.2, 6), goldMat);
+    quiver.position.set(0.3, 1.6, -0.45);
+    quiver.rotation.z = -0.3;
+    quiver.rotation.x = 0.2;
+    this.group.add(quiver);
+
+    // 4. Glowing Recurve Solar Bow
+    const bowGroup = new THREE.Group();
+    const bowUpper = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 12, Math.PI / 1.5), goldMat);
+    bowUpper.position.set(0, 0.4, 0);
+    bowUpper.rotation.z = -Math.PI / 4;
+    bowGroup.add(bowUpper);
+
+    const bowLower = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 12, Math.PI / 1.5), goldMat);
+    bowLower.position.set(0, -0.4, 0);
+    bowLower.rotation.z = Math.PI / 1.3;
+    bowGroup.add(bowLower);
+
+    const bowstring = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6), glowStringMat);
+    bowstring.position.set(-0.25, 0, 0);
+    bowGroup.add(bowstring);
+
+    bowGroup.position.set(0.7, 1.5, 0.35);
+    bowGroup.rotation.y = Math.PI / 2;
+    this.group.add(bowGroup);
   }
+
 
   // S1: 多重箭矢
   castSkill1() {
@@ -2476,95 +2610,153 @@ class HeroDaji extends Hero {
   buildDajiModel() {
     const pinkMat = new THREE.MeshStandardMaterial({
       color: 0xf472b6,
-      roughness: 0.4
+      roughness: 0.35
+    });
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.5
     });
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xfbbf24,
-      metalness: 0.7
+      metalness: 0.85
+    });
+    const glowOrbMat = new THREE.MeshBasicMaterial({
+      color: 0xf43f5e
     });
 
-    // Body
-    const bodyGeo = new THREE.ConeGeometry(0.5, 1.4, 8);
+    // 1. Mage Kimono Body
+    const bodyGeo = new THREE.ConeGeometry(0.55, 1.5, 8);
     const body = new THREE.Mesh(bodyGeo, pinkMat);
-    body.position.y = 1.4;
+    body.position.y = 1.35;
     body.castShadow = true;
     this.group.add(body);
 
-    // Fox Ears
+    const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 8), goldMat);
+    sash.position.set(0, 1.3, 0);
+    this.group.add(sash);
+
+    // 2. Head & Furry Fox Ears
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), whiteMat);
+    head.position.y = 2.45;
+    this.group.add(head);
+
     for (let i = -1; i <= 1; i += 2) {
-      const earGeo = new THREE.ConeGeometry(0.2, 0.6, 4);
-      const ear = new THREE.Mesh(earGeo, pinkMat);
-      ear.position.set(i * 0.35, 2.5, 0);
-      ear.rotation.z = -i * 0.3;
-      this.group.add(ear);
+      const earGroup = new THREE.Group();
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 4), pinkMat);
+      const earInner = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 4), whiteMat);
+      earInner.position.z = 0.04;
+      earGroup.add(ear);
+      earGroup.add(earInner);
+
+      earGroup.position.set(i * 0.3, 2.75, 0);
+      earGroup.rotation.z = -i * 0.35;
+      this.group.add(earGroup);
     }
 
-    // Fox Tail
-    const tailGeo = new THREE.CylinderGeometry(0.1, 0.4, 1.6, 8);
-    const tail = new THREE.Mesh(tailGeo, pinkMat);
-    tail.position.set(0, 1.1, -0.6);
-    tail.rotation.x = -Math.PI / 4;
-    this.group.add(tail);
+    // 3. Fluffy Fox Tails
+    for (let i = -1; i <= 1; i++) {
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.35, 1.6, 8), pinkMat);
+      tail.position.set(i * 0.3, 1.0, -0.65);
+      tail.rotation.x = -Math.PI / 3.5;
+      tail.rotation.y = i * 0.25;
+      this.group.add(tail);
+    }
 
-    // Floating Magic Fox Orb
-    const orbGeo = new THREE.SphereGeometry(0.3, 16, 16);
-    const orbMat = new THREE.MeshBasicMaterial({ color: 0xff1493 });
-    this.orbMesh = new THREE.Mesh(orbGeo, orbMat);
-    this.orbMesh.position.set(0.6, 1.8, 0.5);
-    this.group.add(this.orbMesh);
+    // 4. Floating Glowing Magic Orb
+    const orbGroup = new THREE.Group();
+    this.orbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), glowOrbMat);
+    orbGroup.add(this.orbMesh);
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.04, 6, 16), goldMat);
+    ring.rotation.x = Math.PI / 3;
+    orbGroup.add(ring);
+
+    orbGroup.position.set(0.65, 1.8, 0.45);
+    this.group.add(orbGroup);
   }
 
   // S1: 灵魂冲击 (Soul Fox Shockwave)
   castSkill1(direction) {
     if (this.isDead || this.silenceDuration > 0 || this.skillCds[0] > 0) return;
+    this.cancelRecall();
     this.skillCds[0] = this.skillMaxCds[0] * (1 - this.cdr);
 
-    const dir = direction ? direction.clone().normalize() : new THREE.Vector3(0, 0, -1);
-    Sound.playDajiS1();
+    let dir = direction && direction.lengthSq() > 0.001 ? direction.clone().normalize() : null;
+    if (!dir) {
+      dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+    }
+    Sound.playDajiS1 ? Sound.playDajiS1() : Sound.playTone(600, 'sine', 0.2, 0.3);
 
-    // Linear projectile wave
-    const wavePos = this.position.clone();
-    this.vfx.createBullet(wavePos, { position: wavePos.clone().addScaledVector(dir, 12) }, 0xf472b6, 20, () => {});
+    // Shockwave forward
+    const startPos = this.position.clone();
+    const endPos = startPos.clone().addScaledVector(dir, 14);
+    this.vfx.createBullet(startPos, { position: endPos }, 0xf472b6, 22, () => {});
+    this.vfx.createHitSparks(startPos, 0xf472b6, 20);
 
     // Linear AoE Damage
     setTimeout(() => {
       if (window.gameInstance) {
         const enemies = window.gameInstance.getEnemiesFor(this.team);
         for (const e of enemies) {
-          if (!e.isDead && this.position.distanceTo(e.position) <= 12) {
-            e.takeDamage(480 + this.ap * 1.1, this, 'magic');
+          if (!e.isDead && e.position.distanceTo(startPos) < 14) {
+            e.takeDamage(520 + this.ap * 1.2, this, 'magic');
           }
         }
       }
     }, 150);
   }
 
-  // S2: 偶像魅力 (Homing Heart Charm Stun)
+  // S2: 偶像魅力 (Charm Stun)
   castSkill2(targetHero) {
-    if (this.isDead || this.silenceDuration > 0 || this.skillCds[1] > 0 || !targetHero) return;
+    if (this.isDead || this.silenceDuration > 0 || this.skillCds[1] > 0) return;
+    this.cancelRecall();
     this.skillCds[1] = this.skillMaxCds[1] * (1 - this.cdr);
 
-    Sound.playDajiS2();
-    this.vfx.createDajiHeartProjectile(this.position, targetHero, () => {
-      targetHero.takeDamage(260 + this.ap * 0.6, this, 'magic');
-      targetHero.applyStun(1.5); // 1.5s Stun charm!
-      this.vfx.createHitSparks(targetHero.position, 0xff1493, 20);
-    });
+    Sound.playDajiS2 ? Sound.playDajiS2() : Sound.playTone(800, 'sine', 0.3, 0.4);
+
+    let target = targetHero;
+    if (!target && window.gameInstance) {
+      const enemies = window.gameInstance.getEnemiesFor(this.team);
+      target = enemies.find(e => !e.isDead && this.position.distanceTo(e.position) < 12);
+    }
+
+    if (target) {
+      this.vfx.createDajiCharmHeart(this.position, target, () => {
+        target.takeDamage(350 + this.ap * 0.7, this, 'magic');
+        if (target.applyStun) target.applyStun(1.5);
+        this.vfx.createFloatingText("魅惑·眩晕 1.5s!", target.position, "magic");
+      });
+    } else {
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion);
+      this.vfx.createBullet(this.position, { position: this.position.clone().addScaledVector(fwd, 10) }, 0xf43f5e, 18, () => {});
+    }
   }
 
-  // S3: 女王崇拜 (5 Fox Fire Homing Burst)
+  // S3: 女王崇拜 (5 Fox Fire Homing Burst Ult)
   castSkill3(targetHero) {
-    if (this.isDead || this.silenceDuration > 0 || this.skillCds[2] > 0 || !targetHero) return;
+    if (this.isDead || this.silenceDuration > 0 || this.skillCds[2] > 0) return;
+    this.cancelRecall();
     this.skillCds[2] = this.skillMaxCds[2] * (1 - this.cdr);
 
-    Sound.playDajiS3();
+    Sound.playDajiS3 ? Sound.playDajiS3() : Sound.playTone(900, 'triangle', 0.4, 0.5);
+
+    let target = targetHero;
+    if (!target && window.gameInstance) {
+      const enemies = window.gameInstance.getEnemiesFor(this.team);
+      target = enemies.find(e => !e.isDead && this.position.distanceTo(e.position) < 14);
+    }
+
+    // 5 consecutive rapid homing fox fires
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
-        if (!this.isDead && targetHero && !targetHero.isDead) {
-          this.vfx.createDajiFoxOrb(this.position, targetHero, () => {
-            targetHero.takeDamage(280 + this.ap * 0.6, this, 'magic');
-          });
-        }
+        if (this.isDead) return;
+        const shootTarget = target || { position: this.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 8, 0, -10)) };
+        this.vfx.createBullet(this.position, shootTarget, 0xf43f5e, 26, () => {
+          if (shootTarget.takeDamage) {
+            shootTarget.takeDamage(320 + this.ap * 0.65, this, 'magic');
+            this.vfx.createHitSparks(shootTarget.position, 0xf43f5e, 12);
+          }
+        });
       }, i * 90);
     }
   }
@@ -2848,14 +3040,19 @@ class ShopManager {
 
     const buyBtn = document.getElementById('btn-modal-buy');
     if (buyBtn) {
-      buyBtn.onclick = () => this.buyItem(this.selectedItem);
+      buyBtn.onclick = (e) => { e.preventDefault(); this.buyItem(this.selectedItem); };
+      buyBtn.ontouchstart = (e) => { e.preventDefault(); e.stopPropagation(); this.buyItem(this.selectedItem); };
     }
   }
 
   buyItem(item) {
-    if (this.hero.gold < item.price) return;
+    if (!item) return;
+    if (this.hero.gold < item.price) {
+      this.hero.vfx.createFloatingText("金币不足!", this.hero.position, "physical");
+      return;
+    }
     if (this.hero.inventory.length >= 6) {
-      alert("装备槽已满 (最多6件)！");
+      this.hero.vfx.createFloatingText("装备已满 (6件)!", this.hero.position, "physical");
       return;
     }
 
@@ -2878,8 +3075,9 @@ class ShopManager {
     if (item.stats.moveSpeed) this.hero.moveSpeed += item.stats.moveSpeed;
     if (item.stats.attackSpeed) this.hero.attackSpeed += item.stats.attackSpeed;
 
-    Sound.playGold();
-    this.hero.vfx.createFloatingText(`购买: ${item.name}`, this.hero.position, "heal");
+    Sound.playGold ? Sound.playGold() : Sound.playTone(880, 'sine', 0.2, 0.3);
+    this.hero.vfx.createFloatingText(`+${item.name}`, this.hero.position, "heal");
+    this.hero.vfx.createHitSparks(this.hero.position, 0xfacc15, 20);
 
     this.updateQuickBuy();
     this.updateDetailPane();
@@ -2901,7 +3099,7 @@ class ShopManager {
     container.style.display = 'flex';
 
     container.innerHTML = `
-      <div class="quick-buy-item" id="quick-buy-btn">
+      <div class="quick-buy-item hud-interactive" id="quick-buy-btn">
         <div class="item-icon">${recItem.icon}</div>
         <div class="quick-buy-info">
           <span class="item-name">${recItem.name}</span>
@@ -2913,17 +3111,26 @@ class ShopManager {
 
     const qBtn = document.getElementById('quick-buy-btn');
     if (qBtn) {
-      qBtn.onclick = () => this.buyItem(recItem);
+      qBtn.onclick = (e) => { e.preventDefault(); this.buyItem(recItem); };
+      qBtn.ontouchstart = (e) => { e.preventDefault(); e.stopPropagation(); this.buyItem(recItem); };
     }
     const sBtn = document.getElementById('btn-open-shop');
     if (sBtn) {
-      sBtn.onclick = () => {
+      sBtn.onclick = (e) => {
+        e.preventDefault();
+        const modal = document.getElementById('shop-modal');
+        if (modal) modal.style.display = 'flex';
+      };
+      sBtn.ontouchstart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const modal = document.getElementById('shop-modal');
         if (modal) modal.style.display = 'flex';
       };
     }
   }
 }
+
 
 
 // --- js/moba/UIController.js ---
@@ -2971,19 +3178,11 @@ class UIController {
 
     if (joyZone && joyThumb) {
       const updateJoystick = (clientX, clientY) => {
-        const isRotated = (window.innerWidth < window.innerHeight && window.innerWidth <= 900);
         const rect = joyZone.getBoundingClientRect();
         const startX = rect.left + rect.width / 2;
         const startY = rect.top + rect.height / 2;
-        let dx = clientX - startX;
-        let dy = clientY - startY;
-
-        if (isRotated) {
-          const rdx = dy;
-          const rdy = -dx;
-          dx = rdx;
-          dy = rdy;
-        }
+        const dx = clientX - startX;
+        const dy = clientY - startY;
 
         const dist = Math.sqrt(dx * dx + dy * dy);
         const maxR = rect.width * 0.38;
@@ -3071,7 +3270,7 @@ class UIController {
       this.handleKeyboardMovement();
 
       if (k === '1' || k === 'q') this.triggerSkill(0);
-      if (k === '2' || k === 'w' && e.ctrlKey) this.triggerSkill(1);
+      if (k === '2' || (k === 'w' && e.ctrlKey)) this.triggerSkill(1);
       if (k === 'e' || k === '2') this.triggerSkill(1);
       if (k === '3' || k === 'r') this.triggerSkill(2);
       if (k === ' ' || k === 'j') this.triggerMainAttack();
@@ -3121,7 +3320,7 @@ class UIController {
     this.player.skillPoints--;
     this.player.skillLevels[index]++;
     this.player.vfx.createFloatingText(`升级技能 ${index + 1}!`, this.player.position, "heal");
-    Sound.playLevelUp();
+    Sound.playLevelUp ? Sound.playLevelUp() : Sound.playTone(800, 'sine', 0.2, 0.3);
   }
 
   handleKeyboardMovement() {
@@ -3143,51 +3342,45 @@ class UIController {
   triggerMainAttack() {
     if (!this.player || this.player.isDead) return;
     const target = this.game.getBestAttackTarget(this.player, 'any');
-    if (target) {
-      this.player.performBasicAttack(target);
-    }
+    this.player.performBasicAttack(target);
   }
 
   triggerPushTower() {
     if (!this.player || this.player.isDead) return;
-    const target = this.game.getBestAttackTarget(this.player, 'tower');
-    if (target) {
-      this.player.performBasicAttack(target);
-    }
+    const target = this.game.getBestAttackTarget(this.player, 'tower') || this.game.getBestAttackTarget(this.player, 'any');
+    this.player.performBasicAttack(target);
   }
 
   triggerLastHit() {
     if (!this.player || this.player.isDead) return;
-    const target = this.game.getBestAttackTarget(this.player, 'minion');
-    if (target) {
-      this.player.performBasicAttack(target);
-    }
+    const target = this.game.getBestAttackTarget(this.player, 'minion') || this.game.getBestAttackTarget(this.player, 'any');
+    this.player.performBasicAttack(target);
   }
 
   triggerSkill(index) {
     if (!this.player || this.player.isDead) return;
     const enemies = this.game.getEnemiesFor(this.player.team);
-    const closestHero = enemies.find(e => e instanceof Hero && !e.isDead && this.player.position.distanceTo(e.position) < 14);
+    const closestHero = enemies.find(e => !e.isDead && (e instanceof Hero || e.hp !== undefined) && this.player.position.distanceTo(e.position) < 14);
 
     if (index === 0) {
       if (this.player.castSkill1) this.player.castSkill1(this.player.velocity);
     } else if (index === 1) {
       if (this.player instanceof HeroHouyi) {
-        const aimPos = closestHero ? closestHero.position : this.player.position.clone().add(new THREE.Vector3(0,0,-8));
+        const aimPos = closestHero ? closestHero.position.clone() : this.player.position.clone().add(new THREE.Vector3(0, 0, -8).applyQuaternion(this.player.group.quaternion));
         this.player.castSkill2(aimPos);
       } else if (this.player instanceof HeroDaji) {
-        if (closestHero) this.player.castSkill2(closestHero);
-      } else {
+        this.player.castSkill2(closestHero);
+      } else if (this.player.castSkill2) {
         this.player.castSkill2();
       }
     } else if (index === 2) {
       if (this.player instanceof HeroArthur) {
-        if (closestHero) this.player.castSkill3(closestHero);
+        this.player.castSkill3(closestHero);
       } else if (this.player instanceof HeroHouyi) {
-        const aimDir = closestHero ? closestHero.position.clone().sub(this.player.position).normalize() : new THREE.Vector3(0,0,-1);
+        const aimDir = closestHero ? closestHero.position.clone().sub(this.player.position).normalize() : new THREE.Vector3(0, 0, -1).applyQuaternion(this.player.group.quaternion);
         this.player.castSkill3(aimDir);
       } else if (this.player instanceof HeroDaji) {
-        if (closestHero) this.player.castSkill3(closestHero);
+        this.player.castSkill3(closestHero);
       }
     }
   }
@@ -3203,6 +3396,7 @@ class UIController {
   triggerRecall() {
     if (this.player) this.player.startRecall();
   }
+
 
   update(delta) {
     this.updateHUD();

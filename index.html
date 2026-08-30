@@ -16,11 +16,11 @@
   <meta name="360-fullscreen" content="true">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
-  <link rel="icon" href="assets/icon-192.png" type="image/png">
-  <title>王者荣耀 3D Web MOBA - 高还原度自研引擎版 (v3.1.0)</title>
-  <link rel="stylesheet" href="css/style.css?v=3.1.0">
+  <title>王者荣耀 3D Web MOBA - 高还原度自研引擎版 (v3.2.0)</title>
+  <link rel="stylesheet" href="css/style.css?v=3.2.0">
   <!-- Three.js Engine -->
-  <script src="js/three.min.js?v=3.1.0"></script>
+  <script src="js/three.min.js?v=3.2.0"></script>
+
   <script>
     if (typeof THREE === 'undefined') {
       document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\\/script>');
@@ -205,7 +205,7 @@
         </div>
       </div>
       <button class="btn-start-battle" onclick="startGame()">进入王者峡谷</button>
-      <div style="font-size: 11px; color: #64748b; margin-top: 14px; letter-spacing: 0.5px;">当前版本: v3.1.0 (App 纯净横屏/免感应版)</div>
+      <div style="font-size: 11px; color: #64748b; margin-top: 14px; letter-spacing: 0.5px;">当前版本: v3.2.0 (1:1 核心技能实装与人物居中版)</div>
     </div>
 
     <!-- Game Over Modal -->
@@ -230,10 +230,10 @@
   </script>
 
   <!-- Game Engine Bundle -->
-  <script src="js/bundle.js?v=3.1.0"></script>
+  <script src="js/bundle.js?v=3.2.0"></script>
 
   <script>
-    // Force clean old Service Workers and register latest v3.1.0
+    // Force clean old Service Workers and register latest v3.2.0
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -241,9 +241,10 @@
             registration.update();
           }
         });
-        navigator.serviceWorker.register('./sw.js?v=3.1.0').catch(err => console.log('SW update:', err));
+        navigator.serviceWorker.register('./sw.js?v=3.2.0').catch(err => console.log('SW update:', err));
       });
     }
+
 
     let selectedHero = 'arthur';
 

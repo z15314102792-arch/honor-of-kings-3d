@@ -23,95 +23,153 @@ class HeroDaji extends Hero {
   buildDajiModel() {
     const pinkMat = new THREE.MeshStandardMaterial({
       color: 0xf472b6,
-      roughness: 0.4
+      roughness: 0.35
+    });
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.5
     });
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xfbbf24,
-      metalness: 0.7
+      metalness: 0.85
+    });
+    const glowOrbMat = new THREE.MeshBasicMaterial({
+      color: 0xf43f5e
     });
 
-    // Body
-    const bodyGeo = new THREE.ConeGeometry(0.5, 1.4, 8);
+    // 1. Mage Kimono Body
+    const bodyGeo = new THREE.ConeGeometry(0.55, 1.5, 8);
     const body = new THREE.Mesh(bodyGeo, pinkMat);
-    body.position.y = 1.4;
+    body.position.y = 1.35;
     body.castShadow = true;
     this.group.add(body);
 
-    // Fox Ears
+    const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.25, 8), goldMat);
+    sash.position.set(0, 1.3, 0);
+    this.group.add(sash);
+
+    // 2. Head & Furry Fox Ears
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), whiteMat);
+    head.position.y = 2.45;
+    this.group.add(head);
+
     for (let i = -1; i <= 1; i += 2) {
-      const earGeo = new THREE.ConeGeometry(0.2, 0.6, 4);
-      const ear = new THREE.Mesh(earGeo, pinkMat);
-      ear.position.set(i * 0.35, 2.5, 0);
-      ear.rotation.z = -i * 0.3;
-      this.group.add(ear);
+      const earGroup = new THREE.Group();
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 4), pinkMat);
+      const earInner = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 4), whiteMat);
+      earInner.position.z = 0.04;
+      earGroup.add(ear);
+      earGroup.add(earInner);
+
+      earGroup.position.set(i * 0.3, 2.75, 0);
+      earGroup.rotation.z = -i * 0.35;
+      this.group.add(earGroup);
     }
 
-    // Fox Tail
-    const tailGeo = new THREE.CylinderGeometry(0.1, 0.4, 1.6, 8);
-    const tail = new THREE.Mesh(tailGeo, pinkMat);
-    tail.position.set(0, 1.1, -0.6);
-    tail.rotation.x = -Math.PI / 4;
-    this.group.add(tail);
+    // 3. Fluffy Fox Tails
+    for (let i = -1; i <= 1; i++) {
+      const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.35, 1.6, 8), pinkMat);
+      tail.position.set(i * 0.3, 1.0, -0.65);
+      tail.rotation.x = -Math.PI / 3.5;
+      tail.rotation.y = i * 0.25;
+      this.group.add(tail);
+    }
 
-    // Floating Magic Fox Orb
-    const orbGeo = new THREE.SphereGeometry(0.3, 16, 16);
-    const orbMat = new THREE.MeshBasicMaterial({ color: 0xff1493 });
-    this.orbMesh = new THREE.Mesh(orbGeo, orbMat);
-    this.orbMesh.position.set(0.6, 1.8, 0.5);
-    this.group.add(this.orbMesh);
+    // 4. Floating Glowing Magic Orb
+    const orbGroup = new THREE.Group();
+    this.orbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), glowOrbMat);
+    orbGroup.add(this.orbMesh);
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.04, 6, 16), goldMat);
+    ring.rotation.x = Math.PI / 3;
+    orbGroup.add(ring);
+
+    orbGroup.position.set(0.65, 1.8, 0.45);
+    this.group.add(orbGroup);
   }
 
   // S1: 灵魂冲击 (Soul Fox Shockwave)
   castSkill1(direction) {
     if (this.isDead || this.silenceDuration > 0 || this.skillCds[0] > 0) return;
+    this.cancelRecall();
     this.skillCds[0] = this.skillMaxCds[0] * (1 - this.cdr);
 
-    const dir = direction ? direction.clone().normalize() : new THREE.Vector3(0, 0, -1);
-    Sound.playDajiS1();
+    let dir = direction && direction.lengthSq() > 0.001 ? direction.clone().normalize() : null;
+    if (!dir) {
+      dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+    }
+    Sound.playDajiS1 ? Sound.playDajiS1() : Sound.playTone(600, 'sine', 0.2, 0.3);
 
-    // Linear projectile wave
-    const wavePos = this.position.clone();
-    this.vfx.createBullet(wavePos, { position: wavePos.clone().addScaledVector(dir, 12) }, 0xf472b6, 20, () => {});
+    // Shockwave forward
+    const startPos = this.position.clone();
+    const endPos = startPos.clone().addScaledVector(dir, 14);
+    this.vfx.createBullet(startPos, { position: endPos }, 0xf472b6, 22, () => {});
+    this.vfx.createHitSparks(startPos, 0xf472b6, 20);
 
     // Linear AoE Damage
     setTimeout(() => {
       if (window.gameInstance) {
         const enemies = window.gameInstance.getEnemiesFor(this.team);
         for (const e of enemies) {
-          if (!e.isDead && this.position.distanceTo(e.position) <= 12) {
-            e.takeDamage(480 + this.ap * 1.1, this, 'magic');
+          if (!e.isDead && e.position.distanceTo(startPos) < 14) {
+            e.takeDamage(520 + this.ap * 1.2, this, 'magic');
           }
         }
       }
     }, 150);
   }
 
-  // S2: 偶像魅力 (Homing Heart Charm Stun)
+  // S2: 偶像魅力 (Charm Stun)
   castSkill2(targetHero) {
-    if (this.isDead || this.silenceDuration > 0 || this.skillCds[1] > 0 || !targetHero) return;
+    if (this.isDead || this.silenceDuration > 0 || this.skillCds[1] > 0) return;
+    this.cancelRecall();
     this.skillCds[1] = this.skillMaxCds[1] * (1 - this.cdr);
 
-    Sound.playDajiS2();
-    this.vfx.createDajiHeartProjectile(this.position, targetHero, () => {
-      targetHero.takeDamage(260 + this.ap * 0.6, this, 'magic');
-      targetHero.applyStun(1.5); // 1.5s Stun charm!
-      this.vfx.createHitSparks(targetHero.position, 0xff1493, 20);
-    });
+    Sound.playDajiS2 ? Sound.playDajiS2() : Sound.playTone(800, 'sine', 0.3, 0.4);
+
+    let target = targetHero;
+    if (!target && window.gameInstance) {
+      const enemies = window.gameInstance.getEnemiesFor(this.team);
+      target = enemies.find(e => !e.isDead && this.position.distanceTo(e.position) < 12);
+    }
+
+    if (target) {
+      this.vfx.createDajiCharmHeart(this.position, target, () => {
+        target.takeDamage(350 + this.ap * 0.7, this, 'magic');
+        if (target.applyStun) target.applyStun(1.5);
+        this.vfx.createFloatingText("魅惑·眩晕 1.5s!", target.position, "magic");
+      });
+    } else {
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion);
+      this.vfx.createBullet(this.position, { position: this.position.clone().addScaledVector(fwd, 10) }, 0xf43f5e, 18, () => {});
+    }
   }
 
-  // S3: 女王崇拜 (5 Fox Fire Homing Burst)
+  // S3: 女王崇拜 (5 Fox Fire Homing Burst Ult)
   castSkill3(targetHero) {
-    if (this.isDead || this.silenceDuration > 0 || this.skillCds[2] > 0 || !targetHero) return;
+    if (this.isDead || this.silenceDuration > 0 || this.skillCds[2] > 0) return;
+    this.cancelRecall();
     this.skillCds[2] = this.skillMaxCds[2] * (1 - this.cdr);
 
-    Sound.playDajiS3();
+    Sound.playDajiS3 ? Sound.playDajiS3() : Sound.playTone(900, 'triangle', 0.4, 0.5);
+
+    let target = targetHero;
+    if (!target && window.gameInstance) {
+      const enemies = window.gameInstance.getEnemiesFor(this.team);
+      target = enemies.find(e => !e.isDead && this.position.distanceTo(e.position) < 14);
+    }
+
+    // 5 consecutive rapid homing fox fires
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
-        if (!this.isDead && targetHero && !targetHero.isDead) {
-          this.vfx.createDajiFoxOrb(this.position, targetHero, () => {
-            targetHero.takeDamage(280 + this.ap * 0.6, this, 'magic');
-          });
-        }
+        if (this.isDead) return;
+        const shootTarget = target || { position: this.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 8, 0, -10)) };
+        this.vfx.createBullet(this.position, shootTarget, 0xf43f5e, 26, () => {
+          if (shootTarget.takeDamage) {
+            shootTarget.takeDamage(320 + this.ap * 0.65, this, 'magic');
+            this.vfx.createHitSparks(shootTarget.position, 0xf43f5e, 12);
+          }
+        });
       }, i * 90);
     }
   }

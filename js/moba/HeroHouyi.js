@@ -25,36 +25,71 @@ class HeroHouyi extends Hero {
   }
 
   buildHouyiModel() {
-    const robeMat = new THREE.MeshStandardMaterial({
-      color: this.team === 'blue' ? 0x2563eb : 0xdc2626,
-      roughness: 0.5
-    });
     const goldMat = new THREE.MeshStandardMaterial({
       color: 0xf59e0b,
-      metalness: 0.8
+      metalness: 0.85,
+      roughness: 0.2
+    });
+    const robeMat = new THREE.MeshStandardMaterial({
+      color: this.team === 'blue' ? 0x2563eb : 0xdc2626,
+      roughness: 0.4
+    });
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.3
+    });
+    const glowStringMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a
     });
 
-    // Body
-    const bodyGeo = new THREE.CylinderGeometry(0.5, 0.4, 1.5, 8);
+    // 1. Tunic & Solar Armor
+    const bodyGeo = new THREE.CylinderGeometry(0.55, 0.4, 1.5, 8);
     const body = new THREE.Mesh(bodyGeo, robeMat);
     body.position.y = 1.5;
     body.castShadow = true;
     this.group.add(body);
 
-    // Sun Crown
-    const crownGeo = new THREE.TorusGeometry(0.4, 0.08, 8, 16);
-    const crown = new THREE.Mesh(crownGeo, goldMat);
-    crown.position.y = 2.6;
-    crown.rotation.x = Math.PI / 2;
-    this.group.add(crown);
+    const chestGold = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.5), goldMat);
+    chestGold.position.set(0, 1.7, 0.1);
+    this.group.add(chestGold);
 
-    // Glowing Golden Bow
-    const bowGeo = new THREE.TorusGeometry(0.8, 0.06, 6, 16, Math.PI);
-    const bow = new THREE.Mesh(bowGeo, goldMat);
-    bow.position.set(0.6, 1.5, 0.4);
-    bow.rotation.y = Math.PI / 2;
-    this.group.add(bow);
+    // 2. Head & Solar Feather Tiara
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), whiteMat);
+    head.position.y = 2.55;
+    this.group.add(head);
+
+    const tiara = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 4), goldMat);
+    tiara.position.set(0, 2.9, 0.1);
+    this.group.add(tiara);
+
+    // 3. Quiver on Back
+    const quiver = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 1.2, 6), goldMat);
+    quiver.position.set(0.3, 1.6, -0.45);
+    quiver.rotation.z = -0.3;
+    quiver.rotation.x = 0.2;
+    this.group.add(quiver);
+
+    // 4. Glowing Recurve Solar Bow
+    const bowGroup = new THREE.Group();
+    const bowUpper = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 12, Math.PI / 1.5), goldMat);
+    bowUpper.position.set(0, 0.4, 0);
+    bowUpper.rotation.z = -Math.PI / 4;
+    bowGroup.add(bowUpper);
+
+    const bowLower = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 12, Math.PI / 1.5), goldMat);
+    bowLower.position.set(0, -0.4, 0);
+    bowLower.rotation.z = Math.PI / 1.3;
+    bowGroup.add(bowLower);
+
+    const bowstring = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6), glowStringMat);
+    bowstring.position.set(-0.25, 0, 0);
+    bowGroup.add(bowstring);
+
+    bowGroup.position.set(0.7, 1.5, 0.35);
+    bowGroup.rotation.y = Math.PI / 2;
+    this.group.add(bowGroup);
   }
+
 
   // S1: 多重箭矢
   castSkill1() {

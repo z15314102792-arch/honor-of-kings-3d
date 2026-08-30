@@ -194,6 +194,7 @@ class Hero {
       this.recallTimer = 0;
       const bar = document.getElementById('channeling-bar-container');
       if (bar && this.isPlayer) bar.style.display = 'none';
+      if (this.isPlayer) this.vfx.createFloatingText("回城已打断", this.position, "physical");
     }
   }
 
@@ -202,6 +203,13 @@ class Hero {
     this.isChannelingRecall = true;
     this.recallTimer = 7.0; // 7 seconds channel
     Sound.playRecall();
+    const bar = document.getElementById('channeling-bar-container');
+    if (bar && this.isPlayer) {
+      bar.style.display = 'flex';
+      const fill = document.getElementById('channeling-fill');
+      if (fill) fill.style.width = '0%';
+    }
+    this.vfx.createHitSparks(this.position, 0x38bdf8, 20);
   }
 
   castFlash(direction) {
@@ -209,20 +217,29 @@ class Hero {
     this.flashCd = 120; // 120s CD
     this.cancelRecall();
 
-    const dir = direction ? direction.clone().normalize() : new THREE.Vector3(0, 0, -1);
-    this.position.addScaledVector(dir, 7.0);
+    let dir = direction && direction.lengthSq() > 0.001 ? direction.clone().normalize() : null;
+    if (!dir) {
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion);
+      dir = forward.normalize();
+    }
+    this.position.addScaledVector(dir, 7.5);
     this.group.position.copy(this.position);
-    this.vfx.createHitSparks(this.position, 0xffd700, 20);
+    this.vfx.createHitSparks(this.position, 0xfde047, 30);
+    this.vfx.createFloatingText("闪现!", this.position, "heal");
     Sound.playArthurS1();
   }
 
   castHeal() {
     if (this.isDead || this.healCd > 0) return;
     this.healCd = 60; // 60s CD
-    const healAmount = this.maxHp * 0.15 + 200;
+    this.cancelRecall();
+    const healAmount = this.maxHp * 0.25 + 250;
     this.hp = Math.min(this.maxHp, this.hp + healAmount);
-    this.vfx.createFloatingText(`+${Math.round(healAmount)}`, this.position, "heal");
-    this.vfx.createHitSparks(this.position, 0x10b981, 15);
+    this.moveSpeed += 1.5;
+    setTimeout(() => { this.moveSpeed = Math.max(7.0, this.moveSpeed - 1.5); }, 3000);
+
+    this.vfx.createFloatingText(`+${Math.round(healAmount)} 治疗!`, this.position, "heal");
+    this.vfx.createHitSparks(this.position, 0x10b981, 25);
     Sound.playTone(660, 'sine', 0.3, 0.4);
   }
 
@@ -256,6 +273,7 @@ class Hero {
 
   die(killer) {
     this.isDead = true;
+    this.cancelRecall();
     this.hp = 0;
     this.deaths++;
     this.group.visible = false;
@@ -323,20 +341,37 @@ class Hero {
     }
 
     // Fountain Healing (if at home base)
-    const homePos = new THREE.Vector3(this.team === 'blue' ? -52 : 52, 0, this.team === 'blue' ? 52 : -52);
-    if (this.position.distanceTo(homePos) < 9) {
-      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.25 * delta);
-      this.mana = Math.min(this.maxMana, this.mana + this.maxMana * 0.35 * delta);
+    const homePos = new THREE.Vector3(this.team === 'blue' ? -50 : 50, 0, this.team === 'blue' ? 50 : -50);
+    if (this.position.distanceTo(homePos) < 12) {
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.35 * delta);
+      this.mana = Math.min(this.maxMana, this.mana + this.maxMana * 0.45 * delta);
     }
 
-    // Recall Channeling
+    // Recall Channeling with movement interruption
     if (this.isChannelingRecall) {
-      this.recallTimer -= delta;
-      if (this.recallTimer <= 0) {
-        this.isChannelingRecall = false;
-        this.position.copy(homePos);
-        this.group.position.copy(this.position);
-        this.vfx.createHitSparks(this.position, 0x38bdf8, 30);
+      if (this.velocity.lengthSq() > 0.001) {
+        this.cancelRecall();
+      } else {
+        this.recallTimer -= delta;
+        if (this.isPlayer) {
+          const fill = document.getElementById('channeling-fill');
+          if (fill) {
+            const progress = Math.min(100, Math.max(0, (1 - this.recallTimer / 7.0) * 100));
+            fill.style.width = `${progress}%`;
+          }
+        }
+        if (this.recallTimer <= 0) {
+          this.isChannelingRecall = false;
+          this.position.copy(homePos);
+          this.group.position.copy(this.position);
+          this.hp = this.maxHp;
+          this.mana = this.maxMana;
+          this.vfx.createHitSparks(this.position, 0x38bdf8, 40);
+          this.vfx.createFloatingText("满状态传送!", this.position, "heal");
+          Sound.playRecall();
+          const bar = document.getElementById('channeling-bar-container');
+          if (bar && this.isPlayer) bar.style.display = 'none';
+        }
       }
     }
 
@@ -386,30 +421,38 @@ class Hero {
 
     const isCrit = Math.random() < this.critRate;
     let dmg = this.ad * (isCrit ? this.critDamage : 1.0);
-
     this.attackCooldown = 1 / this.attackSpeed;
-    this.group.lookAt(target.position.x, this.position.y, target.position.z);
 
-    if (this.attackRange <= 3.0) {
-      // Melee strike
-      Sound.playAttackSound();
-      target.takeDamage(dmg, this, isCrit ? 'crit' : 'physical');
+    if (target) {
+      this.group.lookAt(target.position.x, this.position.y, target.position.z);
 
-      // Red buff burn & slow
-      if (this.buffs.red_buff > 0 && target.applySlow) {
-        target.applySlow(0.25, 2.0);
-        target.takeDamage(40 + this.level * 5, this, 'true');
-      }
-    } else {
-      // Ranged projectile
-      Sound.playArrowSound();
-      this.vfx.createBullet(this.position, target, 0xfacc15, 22, () => {
+      if (this.attackRange > 3.0) {
+        Sound.playShoot ? Sound.playShoot() : Sound.playArrowSound();
+        this.vfx.createBullet(this.position, target, 0xfacc15, 22, () => {
+          target.takeDamage(dmg, this, isCrit ? 'crit' : 'physical');
+          if (this.buffs.red_buff > 0 && target.applySlow) {
+            target.applySlow(0.25, 2.0);
+            target.takeDamage(40 + this.level * 5, this, 'true');
+          }
+        });
+      } else {
+        Sound.playHitSound ? Sound.playHitSound() : Sound.playAttackSound();
         target.takeDamage(dmg, this, isCrit ? 'crit' : 'physical');
+        this.vfx.createHitSparks(target.position, isCrit ? 0xef4444 : 0xf59e0b, isCrit ? 22 : 12);
+        if (isCrit) {
+          this.vfx.createFloatingText(`暴击 ${Math.round(dmg)}!`, target.position, "physical");
+        }
         if (this.buffs.red_buff > 0 && target.applySlow) {
           target.applySlow(0.25, 2.0);
           target.takeDamage(40 + this.level * 5, this, 'true');
         }
-      });
+      }
+    } else {
+      const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion);
+      const strikePos = this.position.clone().addScaledVector(forward, 2.0);
+      this.vfx.createHitSparks(strikePos, 0x60a5fa, 8);
+      Sound.playShoot ? Sound.playShoot() : Sound.playAttackSound();
     }
   }
 }
+

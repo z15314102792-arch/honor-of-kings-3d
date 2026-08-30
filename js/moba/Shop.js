@@ -83,14 +83,19 @@ class ShopManager {
 
     const buyBtn = document.getElementById('btn-modal-buy');
     if (buyBtn) {
-      buyBtn.onclick = () => this.buyItem(this.selectedItem);
+      buyBtn.onclick = (e) => { e.preventDefault(); this.buyItem(this.selectedItem); };
+      buyBtn.ontouchstart = (e) => { e.preventDefault(); e.stopPropagation(); this.buyItem(this.selectedItem); };
     }
   }
 
   buyItem(item) {
-    if (this.hero.gold < item.price) return;
+    if (!item) return;
+    if (this.hero.gold < item.price) {
+      this.hero.vfx.createFloatingText("金币不足!", this.hero.position, "physical");
+      return;
+    }
     if (this.hero.inventory.length >= 6) {
-      alert("装备槽已满 (最多6件)！");
+      this.hero.vfx.createFloatingText("装备已满 (6件)!", this.hero.position, "physical");
       return;
     }
 
@@ -113,8 +118,9 @@ class ShopManager {
     if (item.stats.moveSpeed) this.hero.moveSpeed += item.stats.moveSpeed;
     if (item.stats.attackSpeed) this.hero.attackSpeed += item.stats.attackSpeed;
 
-    Sound.playGold();
-    this.hero.vfx.createFloatingText(`购买: ${item.name}`, this.hero.position, "heal");
+    Sound.playGold ? Sound.playGold() : Sound.playTone(880, 'sine', 0.2, 0.3);
+    this.hero.vfx.createFloatingText(`+${item.name}`, this.hero.position, "heal");
+    this.hero.vfx.createHitSparks(this.hero.position, 0xfacc15, 20);
 
     this.updateQuickBuy();
     this.updateDetailPane();
@@ -136,7 +142,7 @@ class ShopManager {
     container.style.display = 'flex';
 
     container.innerHTML = `
-      <div class="quick-buy-item" id="quick-buy-btn">
+      <div class="quick-buy-item hud-interactive" id="quick-buy-btn">
         <div class="item-icon">${recItem.icon}</div>
         <div class="quick-buy-info">
           <span class="item-name">${recItem.name}</span>
@@ -148,14 +154,23 @@ class ShopManager {
 
     const qBtn = document.getElementById('quick-buy-btn');
     if (qBtn) {
-      qBtn.onclick = () => this.buyItem(recItem);
+      qBtn.onclick = (e) => { e.preventDefault(); this.buyItem(recItem); };
+      qBtn.ontouchstart = (e) => { e.preventDefault(); e.stopPropagation(); this.buyItem(recItem); };
     }
     const sBtn = document.getElementById('btn-open-shop');
     if (sBtn) {
-      sBtn.onclick = () => {
+      sBtn.onclick = (e) => {
+        e.preventDefault();
+        const modal = document.getElementById('shop-modal');
+        if (modal) modal.style.display = 'flex';
+      };
+      sBtn.ontouchstart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const modal = document.getElementById('shop-modal');
         if (modal) modal.style.display = 'flex';
       };
     }
   }
 }
+
