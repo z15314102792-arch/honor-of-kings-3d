@@ -4,14 +4,97 @@
 <title>王者荣耀 · 高还原复刻实验版</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css?v=5.0"><script src="../v4/js/three.min.js"></script>
 </head><body>
 <div id="world-wrap"><canvas id="world"></canvas></div>
-<section id="start-screen" class="start-screen"><div class="start-vignette"></div>
-<header class="brand-row"><div class="brand-mark">王</div><div class="brand-copy"><span class="brand-kicker">HONOR OF KINGS · REPLICA LAB</span><strong>王者荣耀</strong></div><span class="version-chip">HIGH FIDELITY <b>5.0</b></span></header>
-<main class="hero-picker">
-<aside class="hero-profile"><div class="eyebrow">选择你的英雄 <span>01 / 05</span></div><div id="selected-emblem" class="selected-emblem">曜</div><div id="selected-role" class="role-chip">战士 · 前排</div><h1 id="selected-name">曜铠</h1><p id="selected-tagline" class="hero-tagline">以盾开路，以刃终局。</p>
-<div class="stat-row"><span>生存</span><div class="stat-track"><i id="stat-hp" style="width:90%"></i></div></div><div class="stat-row"><span>输出</span><div class="stat-track"><i id="stat-dmg" style="width:66%"></i></div></div><div class="stat-row"><span>机动</span><div class="stat-track"><i id="stat-mob" style="width:52%"></i></div></div><div id="selected-skills" class="selected-skills"></div><div class="profile-note"><span class="pulse-dot"></span> 每名英雄拥有独立技能、成长和战斗定位</div></aside>
-<div class="hero-roster"><div class="roster-heading"><div><span class="eyebrow">HERO ROSTER</span><h2>选定战斗风格</h2></div><span class="roster-count">05 位英雄</span></div><div id="hero-list" class="hero-list"></div>
-<div class="start-footer"><div class="control-note"><span>WASD</span> 移动 <i>·</i> <span>空格</span> 攻击 <i>·</i> <span>Q / E / R</span> 技能</div><button id="start-match" class="primary-button" onclick="window.startMatchNow && window.startMatchNow()">进入王者峡谷 <b>↗</b></button></div></div>
-</main><div id="boot-error" class="boot-error hidden" role="alert"></div><div class="legal-note">王者荣耀高还原复刻实验版 · 非官方项目，不包含官方客户端资源</div></section>
+<section id="start-screen" class="lobby-screen">
+  <div class="lobby-vignette"></div>
+  <header class="lobby-topbar">
+    <div class="lobby-logo"><span class="lobby-logo-seal">王</span><div><strong>王者荣耀</strong><small>王者峡谷</small></div></div>
+    <div class="lobby-account"><div class="lobby-avatar">召</div><div class="lobby-account-copy"><b>召唤师</b><small>等级 1</small></div><i class="lobby-online"></i></div>
+    <div class="lobby-currencies">
+      <div class="lobby-currency"><span class="currency-coin">金</span><div><small>金币</small><b>3,000</b></div></div>
+      <div class="lobby-currency"><span class="currency-diamond">◆</span><div><small>点券</small><b>0</b></div></div>
+      <div class="lobby-currency"><span class="currency-blue">♦</span><div><small>钻石</small><b>0</b></div></div>
+    </div>
+    <div class="lobby-top-actions"><button id="lobby-mail" aria-label="邮件">✉ <span>邮件</span></button><button id="lobby-settings" aria-label="设置">⚙ <span>设置</span></button></div>
+  </header>
+  <nav class="lobby-left-rail" aria-label="大厅导航">
+    <button class="lobby-rail-item active" data-lobby-notice="大厅"><span>⌂</span><b>大厅</b></button>
+    <button class="lobby-rail-item" data-lobby-notice="活动"><span>✦</span><b>活动</b></button>
+    <button class="lobby-rail-item" data-lobby-notice="任务"><span>▤</span><b>任务</b></button>
+    <button class="lobby-rail-item" id="lobby-hero-entry"><span>⚔</span><b>英雄</b></button>
+    <button class="lobby-rail-item" data-lobby-notice="商城"><span>◇</span><b>商城</b></button>
+  </nav>
+  <main class="lobby-content">
+    <section class="lobby-hero-copy">
+      <div class="lobby-season"><i></i> 王者峡谷 · 5V5</div>
+      <div class="lobby-title-rule"></div>
+      <h1 id="lobby-hero-name">亚瑟</h1>
+      <p id="lobby-hero-tagline">以圣剑裁决战场。</p>
+      <div id="lobby-hero-role" class="lobby-hero-role">战士 · 对抗路</div>
+      <button id="lobby-view-heroes" class="lobby-text-button">查看英雄 <span>↗</span></button>
+    </section>
+    <aside class="lobby-right-panel">
+      <div class="lobby-panel-heading"><b>对战入口</b><span>GAME MODES</span></div>
+      <button id="quick-entry" class="lobby-mode-tile primary-mode">
+        <span class="lobby-mode-icon">⚔</span><span class="lobby-mode-copy"><b>5V5 匹配</b><small>王者峡谷 · 经典对战</small></span><i>›</i>
+      </button>
+      <button id="rank-entry" class="lobby-mode-tile">
+        <span class="lobby-mode-icon">♜</span><span class="lobby-mode-copy"><b>排位赛</b><small>段位竞技 · 系统预览</small></span><i>›</i>
+      </button>
+      <button id="training-entry" class="lobby-mode-tile">
+        <span class="lobby-mode-icon">靶</span><span class="lobby-mode-copy"><b>训练营</b><small>练习移动与英雄技能</small></span><i>›</i>
+      </button>
+      <div class="lobby-event-card"><span class="lobby-event-stamp">峡谷</span><div><b>进入王者峡谷</b><small>选择模式，确认英雄，开始对局</small></div></div>
+    </aside>
+  </main>
+  <footer class="lobby-bottom">
+    <div class="lobby-bottom-nav"><button class="active">大厅</button><button id="lobby-hero-entry-bottom">英雄</button><button data-lobby-notice="备战">备战</button><button data-lobby-notice="战令">战令</button></div>
+    <div class="lobby-queue-info"><span class="lobby-ready-dot"></span><div><b>5V5 王者峡谷</b><small>本地可玩演示 · AI 队友与对手</small></div></div>
+    <button id="battle-entry" class="lobby-battle-button"><span>开始游戏</span><small>进入模式选择</small><b>›</b></button>
+  </footer>
+  <div id="lobby-notice" class="lobby-notice hidden" role="status"></div>
+  <div id="boot-error" class="boot-error hidden" role="alert"></div>
+</section>
+
+<section id="mode-modal" class="mode-modal hidden" aria-label="选择对战模式">
+  <div class="mode-dialog">
+    <header class="mode-dialog-heading"><div><small>王者峡谷</small><h2>选择对战模式</h2></div><button id="mode-close" class="mode-close" aria-label="关闭">×</button></header>
+    <div class="mode-grid">
+      <button id="mode-quick" class="mode-card active" data-mode="match"><span class="mode-card-mark">5V5</span><span class="mode-card-copy"><b>王者峡谷</b><small>匹配 · 5V5 经典对局</small></span><i>✓</i></button>
+      <button id="mode-training" class="mode-card" data-mode="training"><span class="mode-card-mark">靶</span><span class="mode-card-copy"><b>训练营</b><small>进入战场练习英雄操作</small></span><i>✓</i></button>
+      <button id="mode-ranked" class="mode-card mode-card-locked"><span class="mode-card-mark">♜</span><span class="mode-card-copy"><b>排位赛</b><small>段位与在线匹配尚未实现</small></span><i>锁</i></button>
+    </div>
+    <div class="mode-dialog-footer"><small>当前为浏览器本地演示，对局由 AI 控制双方队伍。</small><button id="mode-continue" class="lobby-battle-button"><span>进入英雄选择</span><b>›</b></button></div>
+  </div>
+</section>
+
+<section id="hero-select-screen" class="hero-select-screen hidden" aria-label="选择英雄">
+  <header class="draft-topbar"><button id="draft-back" class="draft-back">‹ 返回</button><div class="draft-title"><small>5V5 · 王者峡谷</small><h2>选择英雄</h2></div><div class="draft-count">己方阵容 <b>1 / 5</b></div></header>
+  <main class="draft-layout">
+    <aside class="draft-profile">
+      <div class="draft-profile-heading"><span>当前选择</span><i>HERO INFO</i></div>
+      <div id="selected-emblem" class="draft-emblem">亚</div>
+      <div id="selected-role" class="draft-role">战士 · 对抗路</div>
+      <h1 id="selected-name">亚瑟</h1>
+      <p id="selected-tagline" class="draft-tagline">以圣剑裁决战场。</p>
+      <div class="draft-stats">
+        <div class="stat-row"><span>生存</span><div class="stat-track"><i id="stat-hp" style="width:94%"></i></div></div>
+        <div class="stat-row"><span>输出</span><div class="stat-track"><i id="stat-dmg" style="width:72%"></i></div></div>
+        <div class="stat-row"><span>机动</span><div class="stat-track"><i id="stat-mob" style="width:52%"></i></div></div>
+      </div>
+      <div id="selected-skills" class="draft-skills"></div>
+      <div class="draft-hint"><span class="lobby-ready-dot"></span> 选择英雄后确认进入对局</div>
+    </aside>
+    <section class="draft-roster">
+      <div class="draft-roster-head"><div><small>HEROES</small><h3>全部英雄</h3></div><span>可选英雄 <b>05</b></span></div>
+      <div id="hero-list" class="hero-list"></div>
+      <div class="draft-footer"><span>本地演示 · 5V5 人机对局</span><button id="start-match" class="lobby-battle-button">确认选择并开始 <b>›</b></button></div>
+    </section>
+  </main>
+</section>
+
+<section id="loading-screen" class="loading-screen hidden" aria-label="正在加载">
+  <div class="loading-panel"><span class="loading-emblem">王</span><small>王者峡谷 · 5V5</small><h2>正在进入战场</h2><p id="loading-hero">你选择了 亚瑟</p><div class="loading-progress"><i id="loading-progress-fill"></i></div><small id="loading-status">正在准备英雄与战场…</small></div>
+</section>
 <section id="hud" class="hud hidden">
 <header class="match-topbar"><div class="match-brand"><span class="mini-brand">王</span><div><b>王者荣耀</b><small>5V5 · 王者峡谷</small></div></div><div class="match-score"><div class="team-score blue-team"><small>蓝方</small><b id="blue-score">0</b></div><div class="match-clock"><strong id="match-clock">00:00</strong><small>摧毁敌方水晶</small></div><div class="team-score red-team"><b id="red-score">0</b><small>红方</small></div></div><div class="match-resources"><span class="resource-gold">◈ <b id="player-gold">300</b></span><button id="shop-open" class="shop-open">装备 <kbd>B</kbd></button><button id="pause-open" class="pause-open" aria-label="暂停">Ⅱ</button></div></header>
 <aside class="minimap-panel"><div class="panel-caption"><span>战场态势</span><i>LIVE</i></div><canvas id="minimap" width="180" height="180"></canvas><div class="map-legend"><span><i class="legend-blue"></i>我方</span><span><i class="legend-red"></i>敌方</span></div></aside>
