@@ -49,7 +49,7 @@
   <footer class="lobby-bottom">
     <div class="lobby-bottom-nav"><button class="active">大厅</button><button id="lobby-hero-entry-bottom">英雄</button><button data-lobby-notice="备战">备战</button><button data-lobby-notice="战令">战令</button></div>
     <div class="lobby-queue-info"><span class="lobby-ready-dot"></span><div><b>5V5 王者峡谷</b><small>本地可玩演示 · AI 队友与对手</small></div></div>
-    <button id="battle-entry" class="lobby-battle-button"><span>开始游戏</span><small>进入模式选择</small><b>›</b></button>
+    <button id="battle-entry" class="lobby-battle-button" onclick="window.startMatchNow && window.startMatchNow()"><span>开始游戏</span><small>进入模式选择</small><b>›</b></button>
   </footer>
   <div id="lobby-notice" class="lobby-notice hidden" role="status"></div>
   <div id="boot-error" class="boot-error hidden" role="alert"></div>
@@ -60,7 +60,7 @@
     <header class="mode-dialog-heading"><div><small>王者峡谷</small><h2>选择对战模式</h2></div><button id="mode-close" class="mode-close" aria-label="关闭">×</button></header>
     <div class="mode-grid">
       <button id="mode-quick" class="mode-card active" data-mode="match"><span class="mode-card-mark">5V5</span><span class="mode-card-copy"><b>王者峡谷</b><small>匹配 · 5V5 经典对局</small></span><i>✓</i></button>
-      <button id="mode-training" class="mode-card" data-mode="training"><span class="mode-card-mark">靶</span><span class="mode-card-copy"><b>训练营</b><small>进入战场练习英雄操作</small></span><i>✓</i></button>
+      <button id="mode-training" class="mode-card mode-card-locked"><span class="mode-card-mark">靶</span><span class="mode-card-copy"><b>训练营</b><small>进入战场练习英雄操作</small></span><i>✓</i></button>
       <button id="mode-ranked" class="mode-card mode-card-locked"><span class="mode-card-mark">♜</span><span class="mode-card-copy"><b>排位赛</b><small>段位与在线匹配尚未实现</small></span><i>锁</i></button>
     </div>
     <div class="mode-dialog-footer"><small>当前为浏览器本地演示，对局由 AI 控制双方队伍。</small><button id="mode-continue" class="lobby-battle-button"><span>进入英雄选择</span><b>›</b></button></div>
@@ -108,4 +108,4 @@
 <section id="pause-modal" class="modal hidden"><div class="modal-card pause-card"><span class="eyebrow">MATCH PAUSED</span><h2>暂停战斗</h2><p>峡谷仍在等待你的下一步。</p><button id="resume-match" class="primary-button">继续对局</button><button id="restart-match" class="secondary-button">重新开始</button></div></section>
 <section id="game-over-modal" class="modal hidden"><div class="modal-card result-card"><div id="result-mark" class="result-mark">VICTORY</div><h2 id="result-title">胜利</h2><p id="result-copy">敌方水晶已被摧毁。</p><div id="result-stats" class="result-stats"></div><button id="play-again" class="primary-button">再战一局 <b>↗</b></button></div></section>
 <div id="rotate-hint" class="rotate-hint"><span>▱</span><b>请横屏体验</b><small>旋转设备，进入完整峡谷战场</small></div>
-<script src="game.js?v=6.0"></script></body></html>
+<script src="game.js?v=6.1"></script></body></html>
