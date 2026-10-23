@@ -28,3 +28,9 @@ jobs:
           grep -q 'Game initialization failed' v5/game.js
           grep -q 'class Hero extends Unit' v5/game.js
           grep -q 'class Tower extends Unit' v5/game.js
+          grep -q 'createLobbyStage' v5/game.js
+          grep -q 'openModeSelect' v5/game.js
+          grep -q 'confirmHero' v5/game.js
+          grep -q 'id="mode-modal"' v5/index.html
+          grep -q 'id="hero-select-screen"' v5/index.html
+          grep -q 'id="loading-screen"' v5/index.html
