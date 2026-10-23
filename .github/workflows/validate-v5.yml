@@ -1,0 +1,30 @@
+name: Validate replica build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v5/**'
+      - '.github/workflows/validate-v5.yml'
+  workflow_dispatch:
+
+jobs:
+  syntax-and-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: node --check v5/game.js
+      - name: Check required runtime files and startup recovery
+        run: |
+          test -s v5/index.html
+          test -s v5/style.css
+          grep -q 'startMatchNow' v5/index.html
+          grep -q 'Game initialization failed' v5/game.js
+          grep -q 'class Hero extends Unit' v5/game.js
+          grep -q 'class Tower extends Unit' v5/game.js
